@@ -1,5 +1,5 @@
-import { Moon, SunMedium } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MoonIcon, SunIcon } from './icons/AppIcons';
 
 export default function ThemeToggle({ theme, setTheme, className = '' }) {
   const isDark = theme === 'dark';
@@ -13,16 +13,7 @@ export default function ThemeToggle({ theme, setTheme, className = '' }) {
       variant="outline"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >
-      {isDark ? (
-        <SunMedium className="size-4" />
-      ) : (
-        <img
-          alt=""
-          aria-hidden="true"
-          className="niuma-theme-toggle__sprite"
-          src="/images/sprites/theme-moon.png"
-        />
-      )}
+      {isDark ? <SunIcon /> : <MoonIcon />}
     </Button>
   );
 }

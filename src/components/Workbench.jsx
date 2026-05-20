@@ -1,133 +1,202 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   CloudUpload,
+  Download,
   FileImage,
   FileText,
   QrCode,
+  RefreshCcw,
   ScanText,
-  Sparkles,
+  Trash2,
   Type,
-  Waypoints
+  Waypoints,
+  X
 } from 'lucide-react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+
+/* ─── Utilities ─── */
 
 function formatBytes(value) {
-  if (!value) {
-    return '0 KB';
-  }
-
-  if (value >= 1024 * 1024) {
-    return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  }
-
+  if (!value) return '0 KB';
+  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(value / 1024))} KB`;
 }
 
 function formatDateTime(date, timezone) {
   return new Intl.DateTimeFormat('zh-CN', {
     timeZone: timezone === 'UTC' ? 'UTC' : 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
   }).format(date).replace(/\//g, '-');
 }
 
-function estimateCompressedSize(size, settings) {
-  const qualityRatio = {
-    轻一点: 0.78,
-    平衡: 0.52,
-    更省体积: 0.34
-  };
-  const limitBytes = {
-    保持画质优先: Infinity,
-    '控制在 2MB 内': 2 * 1024 * 1024,
-    '控制在 1MB 内': 1 * 1024 * 1024
-  };
-  const ratio = qualityRatio[settings.quality] ?? 0.52;
-  const estimated = Math.max(12 * 1024, Math.round(size * ratio));
-  const limit = limitBytes[settings.limit] ?? Infinity;
-
-  return Math.min(size, estimated, limit);
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片加载失败')); };
+    img.src = url;
+  });
 }
 
-function buildTextPreview(tool, value, settings) {
-  const content = value.trim();
+function compressImage(file, quality, targetFormat) {
+  return new Promise(async (resolve) => {
+    const img = await loadImage(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
 
-  if (!content) {
-    return null;
-  }
+    const mimeMap = { PNG: 'image/png', JPG: 'image/jpeg', WebP: 'image/webp' };
 
-  if (tool.previewMode === 'dedup') {
-    const rawLines = value.split(/\r?\n/);
-    const cleaned = rawLines
-      .map((line) => (settings.trim === '自动去首尾空格' ? line.trim() : line))
-      .filter((line) => (settings.emptyLine === '忽略空行' ? line !== '' : true));
-    const uniqueLines = [];
-    const seen = new Set();
+    // Determine output mime type
+    let mime;
+    if (targetFormat && mimeMap[targetFormat]) {
+      mime = mimeMap[targetFormat];
+    } else if (file.type === 'image/png') {
+      // PNG is lossless - convert to WebP or JPEG for actual compression
+      mime = 'image/webp';
+    } else {
+      mime = file.type || 'image/jpeg';
+    }
 
-    cleaned.forEach((line) => {
-      if (!seen.has(line)) {
-        seen.add(line);
-        uniqueLines.push(line);
+    // For JPEG/WebP, fill white background (in case of transparency)
+    if (mime !== 'image/png') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    ctx.drawImage(img, 0, 0);
+
+    // PNG doesn't support quality param, others do
+    const q = mime === 'image/png' ? undefined : quality / 100;
+
+    canvas.toBlob((blob) => {
+      // If compressed result is larger than original, return original
+      if (blob && blob.size >= file.size) {
+        resolve(file);
+      } else {
+        resolve(blob || file);
       }
-    });
+    }, mime, q);
+  });
+}
 
-    return {
-      title: '去重结果',
-      meta: `原始 ${cleaned.length} 行，去重后 ${uniqueLines.length} 行`,
-      body: uniqueLines.join('\n') || '没有可输出的内容。'
-    };
-  }
+function resizeImage(file, width, height, fit) {
+  return new Promise(async (resolve) => {
+    const img = await loadImage(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
 
-  if (tool.previewMode === 'timestamp') {
-    const timezone = settings.timezone === 'UTC' ? 'UTC' : 'Asia/Shanghai';
-    const rows = value
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        if (/^\d{13}$/.test(line)) {
-          return `${line} -> ${formatDateTime(new Date(Number(line)), timezone)}`;
-        }
+    if (fit === '拉伸填满') {
+      ctx.drawImage(img, 0, 0, width, height);
+    } else if (fit === '居中裁切') {
+      const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+      const sw = width / scale;
+      const sh = height / scale;
+      const sx = (img.naturalWidth - sw) / 2;
+      const sy = (img.naturalHeight - sh) / 2;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, width, height);
+    } else {
+      const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight);
+      const dw = img.naturalWidth * scale;
+      const dh = img.naturalHeight * scale;
+      ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    }
 
-        if (/^\d{10}$/.test(line)) {
-          return `${line} -> ${formatDateTime(new Date(Number(line) * 1000), timezone)}`;
-        }
+    canvas.toBlob((blob) => resolve(blob), file.type || 'image/png');
+  });
+}
 
-        const parsed = new Date(line.replace(' ', 'T'));
+function convertImage(file, targetFormat, background) {
+  return new Promise(async (resolve) => {
+    const img = await loadImage(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
 
-        if (!Number.isNaN(parsed.getTime())) {
-          return `${line} -> ${Math.floor(parsed.getTime() / 1000)} / ${parsed.getTime()}`;
-        }
+    const mimeMap = { PNG: 'image/png', JPG: 'image/jpeg', WebP: 'image/webp', AVIF: 'image/avif' };
+    const mime = mimeMap[targetFormat] || 'image/png';
 
-        return `${line} -> 无法识别`;
-      });
+    if (mime === 'image/jpeg' && background !== '保留透明') {
+      ctx.fillStyle = background === '自动铺浅灰底' ? '#f0f0f0' : '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
-    return {
-      title: '转换结果',
-      meta: `共处理 ${rows.length} 条时间数据`,
-      body: rows.join('\n')
-    };
-  }
+    ctx.drawImage(img, 0, 0);
+    canvas.toBlob((blob) => resolve(blob), mime, 0.92);
+  });
+}
 
-  return {
-    title: '当前内容',
-    meta: '可继续编辑后再生成结果',
-    body: content
-  };
+/* ─── Sub-components ─── */
+
+function DetailSelect({ options, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  return (
+    <div className="detail-dropdown" ref={ref}>
+      <button
+        className="detail-dropdown__trigger"
+        type="button"
+        onClick={() => setOpen(!open)}
+      >
+        <span>{value}</span>
+        <ChevronDown aria-hidden="true" size={18} className={open ? 'is-open' : ''} />
+      </button>
+      {open && (
+        <div className="detail-dropdown__menu">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              className={`detail-dropdown__item ${opt === value ? 'is-active' : ''}`}
+              type="button"
+              onClick={() => { onChange(opt); setOpen(false); }}
+            >
+              {opt === value && <span className="detail-dropdown__check">✓</span>}
+              <span>{opt}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailSegmented({ options, value, onChange }) {
+  return (
+    <div className="detail-segmented" role="tablist">
+      {options.map((opt) => (
+        <button
+          aria-selected={opt === value}
+          className={opt === value ? 'is-active' : ''}
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+        >{opt}</button>
+      ))}
+    </div>
+  );
 }
 
 function hashSeed(text) {
   let seed = 0;
-
-  for (let index = 0; index < text.length; index += 1) {
-    seed = (seed * 131 + text.charCodeAt(index)) % 2147483647;
-  }
-
+  for (let i = 0; i < text.length; i++) seed = (seed * 131 + text.charCodeAt(i)) % 2147483647;
   return seed || 13579;
 }
 
@@ -135,302 +204,372 @@ function buildQrCells(text) {
   const size = 21;
   let seed = hashSeed(text);
   const cells = [];
-
-  function isFinder(row, column) {
-    const inTopLeft = row < 7 && column < 7;
-    const inTopRight = row < 7 && column >= size - 7;
-    const inBottomLeft = row >= size - 7 && column < 7;
-
-    return inTopLeft || inTopRight || inBottomLeft;
+  function isFinder(r, c) {
+    return (r < 7 && c < 7) || (r < 7 && c >= size - 7) || (r >= size - 7 && c < 7);
   }
-
-  function isFinderFill(row, column) {
-    const localRow = row >= size - 7 ? row - (size - 7) : row;
-    const localColumn = column >= size - 7 ? column - (size - 7) : column;
-    const outer = localRow === 0 || localRow === 6 || localColumn === 0 || localColumn === 6;
-    const inner = localRow >= 2 && localRow <= 4 && localColumn >= 2 && localColumn <= 4;
-
-    return outer || inner;
+  function isFinderFill(r, c) {
+    const lr = r >= size - 7 ? r - (size - 7) : r;
+    const lc = c >= size - 7 ? c - (size - 7) : c;
+    return (lr === 0 || lr === 6 || lc === 0 || lc === 6) || (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4);
   }
-
-  for (let row = 0; row < size; row += 1) {
-    for (let column = 0; column < size; column += 1) {
-      if (isFinder(row, column)) {
-        cells.push(isFinderFill(row, column));
-        continue;
-      }
-
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (isFinder(r, c)) { cells.push(isFinderFill(r, c)); continue; }
       seed = (seed * 48271) % 2147483647;
-      const guideLine = row === 6 || column === 6;
-      cells.push(guideLine ? (row + column) % 2 === 0 : seed % 3 !== 0);
+      const guide = r === 6 || c === 6;
+      cells.push(guide ? (r + c) % 2 === 0 : seed % 3 !== 0);
     }
   }
-
   return cells;
 }
 
 function QrPreview({ value, inverted }) {
   const cells = useMemo(() => buildQrCells(value), [value]);
-
   return (
     <div className={`detail-qr ${inverted ? 'is-inverted' : ''}`} aria-hidden="true">
-      {cells.map((filled, index) => (
-        <span className={filled ? 'is-filled' : ''} key={`${value}-${index}`} />
-      ))}
+      {cells.map((filled, i) => <span className={filled ? 'is-filled' : ''} key={i} />)}
     </div>
   );
 }
 
-function DetailSelect({ options, value, onChange }) {
+const QR_STYLES = [
+  { id: 'classic', label: '经典黑白', fg: '#000000', bg: '#ffffff', rounded: false },
+  { id: 'soft-dark', label: '深邃黑', fg: '#1a1a2e', bg: '#ffffff', rounded: true },
+  { id: 'purple', label: '紫罗兰', fg: '#5b21b6', bg: '#ffffff', rounded: true },
+  { id: 'ocean', label: '海洋蓝', fg: '#1e40af', bg: '#f0f9ff', rounded: true },
+  { id: 'forest', label: '森林绿', fg: '#166534', bg: '#f0fdf4', rounded: true },
+  { id: 'sunset', label: '日落橙', fg: '#9a3412', bg: '#fff7ed', rounded: false },
+  { id: 'rose', label: '玫瑰粉', fg: '#9f1239', bg: '#fff1f2', rounded: true },
+  { id: 'inverted', label: '深色反白', fg: '#ffffff', bg: '#1e1b2e', rounded: false },
+  { id: 'midnight', label: '午夜蓝', fg: '#e0e7ff', bg: '#1e1b4b', rounded: true },
+];
+
+function QrCanvas({ value, size, styleId, logo }) {
+  const canvasRef = useRef(null);
+  const qrStyle = QR_STYLES.find((s) => s.id === styleId) || QR_STYLES[0];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const cells = buildQrCells(value);
+    const gridSize = 21;
+    const cellSize = Math.floor(size / (gridSize + 2));
+    const actualSize = cellSize * (gridSize + 2);
+    canvas.width = actualSize;
+    canvas.height = actualSize;
+
+    const ctx = canvas.getContext('2d');
+    const { fg, bg, rounded } = qrStyle;
+    const radius = rounded ? cellSize * 0.3 : 0;
+
+    // Background
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, actualSize, actualSize);
+
+    // Draw cells
+    const offset = cellSize;
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (cells[r * gridSize + c]) {
+          ctx.fillStyle = fg;
+          const x = offset + c * cellSize;
+          const y = offset + r * cellSize;
+          if (rounded) {
+            ctx.beginPath();
+            ctx.roundRect(x, y, cellSize, cellSize, radius);
+            ctx.fill();
+          } else {
+            ctx.fillRect(x, y, cellSize, cellSize);
+          }
+        }
+      }
+    }
+
+    // Draw logo if provided
+    if (logo) {
+      const logoImg = new Image();
+      logoImg.onload = () => {
+        const logoSize = actualSize * 0.22;
+        const logoX = (actualSize - logoSize) / 2;
+        const logoY = (actualSize - logoSize) / 2;
+        ctx.fillStyle = bg;
+        const pad = 6;
+        ctx.beginPath();
+        ctx.roundRect(logoX - pad, logoY - pad, logoSize + pad * 2, logoSize + pad * 2, 8);
+        ctx.fill();
+        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+      };
+      logoImg.src = URL.createObjectURL(logo);
+    }
+  }, [value, size, qrStyle, logo]);
+
+  const displaySize = Math.min(size, 220);
+
   return (
-    <label className="detail-control detail-control--select">
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <ChevronDown aria-hidden="true" size={20} />
-    </label>
+    <canvas
+      ref={canvasRef}
+      className="detail-qr-canvas"
+      style={{ width: displaySize, height: displaySize, borderRadius: '8px' }}
+    />
   );
 }
 
-function DetailSegmented({ options, value, onChange }) {
+function FileItem({ item, onRemove }) {
+  const percent = item.resultSize != null && item.originSize > 0 && item.resultSize < item.originSize
+    ? Math.round((1 - item.resultSize / item.originSize) * 100)
+    : null;
+
   return (
-    <div className="detail-segmented" role="tablist">
-      {options.map((option) => (
+    <div className="detail-workbench__file-item">
+      <div className="detail-workbench__file-info">
+        <strong>{item.name}</strong>
+        <span>{formatBytes(item.originSize)}</span>
+        {item.status === 'done' && item.resultSize != null && (
+          <span className="detail-workbench__file-result">
+            → {formatBytes(item.resultSize)} {percent != null && percent > 0 ? `(-${percent}%)` : item.resultSize >= item.originSize ? '(已是最优)' : ''}
+          </span>
+        )}
+      </div>
+      <div className="detail-workbench__file-actions">
+        {item.status === 'done' && item.blob && (
+          <button
+            className="detail-workbench__icon-btn"
+            type="button"
+            title="下载"
+            onClick={() => saveAs(item.blob, item.outputName || item.name)}
+          >
+            <Download size={16} />
+          </button>
+        )}
         <button
-          aria-selected={option === value}
-          className={option === value ? 'is-active' : ''}
-          key={option}
+          className="detail-workbench__icon-btn"
           type="button"
-          onClick={() => onChange(option)}
+          title="移除"
+          onClick={() => onRemove(item.id)}
         >
-          {option}
+          <X size={16} />
         </button>
-      ))}
+      </div>
+      {item.status === 'processing' && (
+        <div className="detail-workbench__progress">
+          <div className="detail-workbench__progress-bar" style={{ width: '60%' }} />
+        </div>
+      )}
+      {item.status === 'error' && (
+        <span className="detail-workbench__file-error">处理失败</span>
+      )}
     </div>
   );
 }
 
-function qualityValueFromLabel(label) {
-  if (label === '轻一点') {
-    return 76;
-  }
+/* ─── Text processing ─── */
 
-  if (label === '更省体积') {
-    return 32;
-  }
+function buildTextPreview(tool, value, settings) {
+  const content = value.trim();
+  if (!content) return null;
 
-  return 58;
-}
-
-function labelFromQualityValue(value) {
-  if (value >= 70) {
-    return '轻一点';
-  }
-
-  if (value <= 40) {
-    return '更省体积';
-  }
-
-  return '平衡';
-}
-
-function resultTitleFor(tool) {
-  if (tool.id === 'image-compress') {
-    return '压缩设置';
-  }
-
-  if (tool.id === 'qr-generator') {
-    return '生成设置';
-  }
-
-  if (tool.id === 'text-dedup') {
-    return '去重设置';
-  }
-
-  if (tool.id === 'timestamp-convert') {
-    return '转换设置';
-  }
-
-  if (tool.name.includes('转')) {
-    return '转换设置';
-  }
-
-  if (tool.name.includes('水印')) {
-    return '水印设置';
-  }
-
-  return `${tool.name}设置`;
-}
-
-function getCanvasIcon(tool) {
-  if (tool.previewMode === 'qr') {
-    return QrCode;
+  if (tool.previewMode === 'dedup') {
+    const rawLines = value.split(/\r?\n/);
+    const cleaned = rawLines
+      .map((l) => (settings.trim === '自动去首尾空格' ? l.trim() : l))
+      .filter((l) => (settings.emptyLine === '忽略空行' ? l !== '' : true));
+    const unique = [];
+    const seen = new Set();
+    cleaned.forEach((l) => { if (!seen.has(l)) { seen.add(l); unique.push(l); } });
+    return { title: '去重结果', meta: `原始 ${cleaned.length} 行，去重后 ${unique.length} 行`, body: unique.join('\n') || '没有可输出的内容。' };
   }
 
   if (tool.previewMode === 'timestamp') {
-    return Waypoints;
+    const tz = settings.timezone === 'UTC' ? 'UTC' : 'Asia/Shanghai';
+    const rows = value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((line) => {
+      if (/^\d{13}$/.test(line)) return `${line} → ${formatDateTime(new Date(Number(line)), tz)}`;
+      if (/^\d{10}$/.test(line)) return `${line} → ${formatDateTime(new Date(Number(line) * 1000), tz)}`;
+      const parsed = new Date(line.replace(' ', 'T'));
+      if (!Number.isNaN(parsed.getTime())) return `${line} → ${Math.floor(parsed.getTime() / 1000)} / ${parsed.getTime()}`;
+      return `${line} → 无法识别`;
+    });
+    return { title: '转换结果', meta: `共处理 ${rows.length} 条时间数据`, body: rows.join('\n') };
   }
 
-  if (tool.previewMode === 'dedup') {
-    return Type;
-  }
-
-  if (tool.category.includes('图片')) {
-    return FileImage;
-  }
-
-  if (tool.category.includes('文档')) {
-    return FileText;
-  }
-
-  return ScanText;
+  return { title: '当前内容', meta: '可继续编辑后再生成结果', body: content };
 }
 
-function buildCanvasCopy(tool) {
-  if (tool.inputMode === 'text') {
-    if (tool.previewMode === 'qr') {
-      return {
-        title: '输入链接到这里',
-        hint: '支持链接、文本内容，生成结果会即时预览。'
-      };
-    }
-
-    return {
-      title: '输入内容到这里',
-      hint: '支持多行文本粘贴，结果会在右侧同步展示。'
-    };
-  }
-
-  return {
-    title: '拖拽文件到这里',
-    hint: `支持 ${tool.formats.join('、')} 格式${tool.id === 'image-compress' ? '，最大 20MB' : ''}`
-  };
-}
-
-function renderPrimaryStatus({
-  hasInput,
-  isSuccess,
-  isTextMode,
-  isQrMode,
-  pickedFiles,
-  queue,
-  textPreview,
-  tool
-}) {
-  if (!hasInput) {
-    return '暂无文件上传，处理结果会显示在这里。';
-  }
-
-  if (isTextMode) {
-    if (isQrMode) {
-      return isSuccess
-        ? '二维码已生成，可以继续调整样式后再导出。'
-        : '内容已准备好，点击按钮后会刷新二维码结果。';
-    }
-
-    return isSuccess
-      ? `${textPreview?.title || '结果'}已更新，可以继续编辑内容。`
-      : '内容已就绪，点击按钮后会更新右侧结果。';
-  }
-
-  if (pickedFiles.length === 1) {
-    return isSuccess
-      ? `${pickedFiles[0].name} 已处理完成。`
-      : `${pickedFiles[0].name} 已加入队列，等待处理。`;
-  }
-
-  return isSuccess
-    ? `共 ${queue.length} 个文件处理完成。`
-    : `共 ${queue.length} 个文件已加入队列。`;
-}
+/* ─── Main Component ─── */
 
 export default function Workbench({ tool }) {
   const initialValues = useMemo(
-    () => Object.fromEntries(tool.settings.map((setting) => [setting.id, setting.defaultValue])),
+    () => Object.fromEntries(tool.settings.map((s) => [s.id, s.defaultValue])),
     [tool.settings]
   );
 
   const [settings, setSettings] = useState(initialValues);
-  const [qualityValue, setQualityValue] = useState(() =>
-    qualityValueFromLabel(initialValues.quality || '平衡')
-  );
-  const [pickedFiles, setPickedFiles] = useState([]);
+  const [qualityValue, setQualityValue] = useState(60);
+  const [fileQueue, setFileQueue] = useState([]);
   const [textInput, setTextInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [outputFormat, setOutputFormat] = useState('保持原格式');
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
-  const timerRef = useRef(null);
+  const processingRef = useRef(false);
+
   const isTextMode = tool.inputMode === 'text';
   const isQrMode = tool.previewMode === 'qr';
   const isImageCompress = tool.id === 'image-compress';
-  const hasInput = isTextMode ? textInput.trim().length > 0 : pickedFiles.length > 0;
-  const CanvasIcon = getCanvasIcon(tool);
-  const canvasCopy = buildCanvasCopy(tool);
+  const hasInput = isTextMode ? textInput.trim().length > 0 : fileQueue.length > 0;
+
+  const allDone = fileQueue.length > 0 && fileQueue.every((f) => f.status === 'done' || f.status === 'error');
+  const doneCount = fileQueue.filter((f) => f.status === 'done').length;
+  const hasPending = fileQueue.some((f) => f.status === 'pending');
+
+  // Compare preview state
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareItem, setCompareItem] = useState(null);
+  const [comparePosition, setComparePosition] = useState(50);
+
+  // Image resize custom dimensions
+  const [resizeWidth, setResizeWidth] = useState(900);
+  const [resizeHeight, setResizeHeight] = useState(383);
+  const [lockRatio, setLockRatio] = useState(true);
+  const [aspectRatio, setAspectRatio] = useState(900 / 383);
+
+  // QR generator settings
+  const [qrSize, setQrSize] = useState(256);
+  const [qrStyleId, setQrStyleId] = useState('classic');
+  const [qrLogo, setQrLogo] = useState(null);
+  const qrLogoInputRef = useRef(null);
+
+  function randomQrStyle() {
+    const others = QR_STYLES.filter((s) => s.id !== qrStyleId);
+    const pick = others[Math.floor(Math.random() * others.length)];
+    setQrStyleId(pick.id);
+  }
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-    }
-
     setSettings(initialValues);
-    setQualityValue(qualityValueFromLabel(initialValues.quality || '平衡'));
-    setPickedFiles([]);
+    setQualityValue(60);
+    setFileQueue([]);
     setTextInput('');
     setIsProcessing(false);
-    setIsSuccess(false);
     setOutputFormat('保持原格式');
   }, [initialValues, tool.id]);
 
   function handleSettingChange(id, nextValue) {
-    if (id === 'quality') {
-      setQualityValue(qualityValueFromLabel(nextValue));
+    setSettings((cur) => ({ ...cur, [id]: nextValue }));
+    // Update resize dimensions when preset changes
+    if (id === 'preset' && tool.id === 'image-resize') {
+      if (nextValue.includes('900×383')) { setResizeWidth(900); setResizeHeight(383); setAspectRatio(900 / 383); }
+      else if (nextValue.includes('358×441')) { setResizeWidth(358); setResizeHeight(441); setAspectRatio(358 / 441); }
+      else if (nextValue === '自定义尺寸') { /* keep current values */ }
     }
-    setSettings((current) => ({ ...current, [id]: nextValue }));
-    setIsSuccess(false);
+  }
+
+  function addFiles(rawFiles) {
+    const newItems = Array.from(rawFiles).map((file) => ({
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      name: file.name,
+      file,
+      originSize: file.size,
+      resultSize: null,
+      blob: null,
+      outputName: null,
+      status: 'pending'
+    }));
+    setFileQueue((cur) => [...cur, ...newItems]);
   }
 
   function handleFilePick(event) {
-    const nextFiles = Array.from(event.target.files || []).map((file) => ({
-      name: file.name,
-      size: file.size
-    }));
-
-    if (nextFiles.length > 0) {
-      setPickedFiles(nextFiles);
-      setIsProcessing(false);
-      setIsSuccess(false);
-    }
+    if (event.target.files?.length) addFiles(event.target.files);
+    event.target.value = '';
   }
 
-  function handleSimulate() {
-    if (!hasInput) {
-      return;
-    }
+  function handleDrop(event) {
+    event.preventDefault();
+    setIsDragging(false);
+    if (event.dataTransfer.files?.length) addFiles(event.dataTransfer.files);
+  }
 
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-    }
+  function removeFile(id) {
+    setFileQueue((cur) => cur.filter((f) => f.id !== id));
+  }
 
+  function clearAll() {
+    setFileQueue([]);
+  }
+
+  // Re-compress: reset done files to pending so they can be processed again with new settings
+  function reCompress() {
+    setFileQueue((cur) => cur.map((f) => f.status === 'done' || f.status === 'error'
+      ? { ...f, status: 'pending', blob: null, resultSize: null }
+      : f
+    ));
+  }
+
+  /* ─── Process files ─── */
+
+  const processFiles = useCallback(async () => {
+    if (processingRef.current) return;
+    processingRef.current = true;
     setIsProcessing(true);
-    setIsSuccess(false);
 
-    timerRef.current = window.setTimeout(() => {
-      setIsProcessing(false);
-      setIsSuccess(true);
-    }, 900);
+    const pending = fileQueue.filter((f) => f.status === 'pending');
+
+    for (const item of pending) {
+      setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'processing' } : f));
+
+      try {
+        let blob = null;
+        let outputName = item.name;
+
+        if (isImageCompress) {
+          const fmt = outputFormat === '保持原格式' ? null : outputFormat;
+          blob = await compressImage(item.file, qualityValue, fmt);
+          if (fmt) {
+            const ext = fmt.toLowerCase() === 'jpg' ? 'jpg' : fmt.toLowerCase();
+            outputName = item.name.replace(/\.[^.]+$/, `.${ext}`);
+          }
+        } else if (tool.id === 'image-resize') {
+          blob = await resizeImage(item.file, resizeWidth, resizeHeight, settings.fit || '完整显示');
+        } else if (tool.id === 'image-convert') {
+          blob = await convertImage(item.file, settings.target || 'WebP', settings.background || '保留透明');
+          const ext = (settings.target || 'WebP').toLowerCase() === 'jpg' ? 'jpg' : (settings.target || 'webp').toLowerCase();
+          outputName = item.name.replace(/\.[^.]+$/, `.${ext}`);
+        } else if (tool.id === 'image-to-pdf') {
+          // Simulate - real PDF generation would need jsPDF
+          blob = item.file;
+          outputName = item.name.replace(/\.[^.]+$/, '.pdf');
+        } else {
+          // Generic simulation for other file tools
+          await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
+          blob = item.file;
+          if (tool.id === 'pdf-to-word') outputName = item.name.replace(/\.pdf$/i, '.docx');
+          else if (tool.id === 'word-to-pdf') outputName = item.name.replace(/\.(docx?|doc)$/i, '.pdf');
+          else if (tool.id === 'excel-to-csv') outputName = item.name.replace(/\.(xlsx?|xls)$/i, '.csv');
+          else if (tool.id === 'csv-to-excel') outputName = item.name.replace(/\.csv$/i, '.xlsx');
+        }
+
+        setFileQueue((cur) => cur.map((f) => f.id === item.id ? {
+          ...f,
+          status: 'done',
+          blob,
+          outputName,
+          resultSize: blob?.size ?? item.originSize
+        } : f));
+      } catch {
+        setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'error' } : f));
+      }
+    }
+
+    setIsProcessing(false);
+    processingRef.current = false;
+  }, [fileQueue, isImageCompress, outputFormat, qualityValue, resizeWidth, resizeHeight, settings, tool.id]);
+
+  /* ─── Process text ─── */
+
+  const [textProcessed, setTextProcessed] = useState(false);
+
+  function handleTextProcess() {
+    setTextProcessed(true);
   }
 
   const textPreview = useMemo(
@@ -438,61 +577,68 @@ export default function Workbench({ tool }) {
     [settings, textInput, tool]
   );
 
-  const queue = pickedFiles.map((file) => {
-    if (isImageCompress) {
-      const resultBytes = estimateCompressedSize(file.size, settings);
-      const percent = Math.max(1, Math.round((1 - resultBytes / file.size) * 100));
+  /* ─── Download all ─── */
 
-      return {
-        name: file.name,
-        origin: formatBytes(file.size),
-        result: formatBytes(resultBytes),
-        status: isSuccess ? `已完成 · -${percent}%` : `等待处理 · 预计 -${percent}%`,
-        originBytes: file.size,
-        resultBytes
-      };
+  async function downloadAll() {
+    const doneFiles = fileQueue.filter((f) => f.status === 'done' && f.blob);
+    if (doneFiles.length === 1) {
+      saveAs(doneFiles[0].blob, doneFiles[0].outputName || doneFiles[0].name);
+      return;
     }
+    const zip = new JSZip();
+    doneFiles.forEach((f) => zip.file(f.outputName || f.name, f.blob));
+    const content = await zip.generateAsync({ type: 'blob' });
+    saveAs(content, `${tool.name}-批量处理.zip`);
+  }
 
-    return {
-      name: file.name,
-      origin: formatBytes(file.size),
-      result: tool.sampleFile.result,
-      status: isSuccess ? '已完成' : '等待处理'
-    };
-  });
+  /* ─── Render helpers ─── */
 
-  const compressSummary = useMemo(() => {
-    if (!isImageCompress || queue.length === 0) {
-      return null;
+  function getCanvasIcon() {
+    if (tool.previewMode === 'qr') return QrCode;
+    if (tool.previewMode === 'timestamp') return Waypoints;
+    if (tool.previewMode === 'dedup') return Type;
+    if (tool.category.includes('图片')) return FileImage;
+    if (tool.category.includes('文档')) return FileText;
+    return ScanText;
+  }
+
+  function getCanvasCopy() {
+    if (isTextMode) {
+      if (isQrMode) return { title: '输入链接到这里', hint: '支持链接、文本内容，生成结果会即时预览。' };
+      return { title: '输入内容到这里', hint: '支持多行文本粘贴，结果会在右侧同步展示。' };
     }
-
-    const totalOrigin = queue.reduce((sum, item) => sum + item.originBytes, 0);
-    const totalResult = queue.reduce((sum, item) => sum + item.resultBytes, 0);
-    const reduced = Math.max(0, totalOrigin - totalResult);
-
     return {
-      count: queue.length,
-      origin: formatBytes(totalOrigin),
-      result: formatBytes(totalResult),
-      reduced: formatBytes(reduced)
+      title: '拖拽文件到这里',
+      hint: `支持 ${tool.formats.join('、')} 格式，可同时添加多个文件`
     };
-  }, [isImageCompress, queue]);
+  }
 
-  const primaryStatus = renderPrimaryStatus({
-    hasInput,
-    isSuccess,
-    isTextMode,
-    isQrMode,
-    pickedFiles,
-    queue,
-    textPreview,
-    tool
-  });
+  function resultTitleFor() {
+    if (tool.id === 'image-compress') return '压缩设置';
+    if (tool.id === 'qr-generator') return '生成设置';
+    if (tool.id === 'text-dedup') return '去重设置';
+    if (tool.id === 'timestamp-convert') return '转换设置';
+    if (tool.name.includes('转')) return '转换设置';
+    if (tool.name.includes('水印')) return '水印设置';
+    if (tool.name.includes('尺寸')) return '尺寸设置';
+    if (tool.name.includes('合并')) return '合并设置';
+    if (tool.name.includes('拆分')) return '拆分设置';
+    return `${tool.name}设置`;
+  }
+
+  const CanvasIcon = getCanvasIcon();
+  const canvasCopy = getCanvasCopy();
 
   return (
     <div className="detail-workbench">
+      {/* ─── Left: Canvas / Input ─── */}
       <section className="detail-workbench__canvas">
-        <div className="detail-workbench__dropzone">
+        <div
+          className={`detail-workbench__dropzone ${isDragging ? 'is-dragging' : ''} ${fileQueue.length > 0 ? 'has-files' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={!isTextMode ? handleDrop : undefined}
+        >
           {isTextMode ? (
             <>
               <div className="detail-workbench__intro">
@@ -505,29 +651,18 @@ export default function Workbench({ tool }) {
                 className="detail-workbench__textarea"
                 placeholder={tool.textPlaceholder}
                 value={textInput}
-                onChange={(event) => {
-                  setTextInput(event.target.value);
-                  setIsProcessing(false);
-                  setIsSuccess(false);
-                }}
+                onChange={(e) => { setTextInput(e.target.value); setTextProcessed(false); }}
               />
-
-              {isQrMode && textInput.trim() ? (
-                <div className="detail-workbench__qr-preview">
-                  <QrPreview
-                    value={textInput.trim()}
-                    inverted={settings.style === '深色反白'}
-                  />
-                </div>
-              ) : null}
             </>
           ) : (
             <>
-              <div className="detail-workbench__intro">
-                <CloudUpload aria-hidden="true" size={56} />
-                <h2>{canvasCopy.title}</h2>
-                <p>{canvasCopy.hint}</p>
-              </div>
+              {fileQueue.length === 0 && (
+                <div className="detail-workbench__intro">
+                  <CloudUpload aria-hidden="true" size={56} />
+                  <h2>{canvasCopy.title}</h2>
+                  <p>{canvasCopy.hint}</p>
+                </div>
+              )}
 
               <input
                 ref={fileInputRef}
@@ -538,59 +673,64 @@ export default function Workbench({ tool }) {
                 onChange={handleFilePick}
               />
 
-              <button
-                className="detail-workbench__choose"
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                选择{tool.inputMode === 'file' ? '文件' : '内容'}
-              </button>
+              {fileQueue.length === 0 && (
+                <button
+                  className="detail-workbench__choose"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  选择文件
+                </button>
+              )}
 
-              {pickedFiles.length > 0 ? (
-                <div className="detail-workbench__picked">
-                  {pickedFiles.map((file) => (
-                    <span key={`${file.name}-${file.size}`}>
-                      {file.name}
-                      <em>{formatBytes(file.size)}</em>
-                    </span>
-                  ))}
+              {fileQueue.length > 0 && (
+                <div className="detail-workbench__file-list">
+                  <div className="detail-workbench__file-list-header">
+                    <span>{fileQueue.length} 个文件{allDone ? `，已完成 ${doneCount} 个` : ''}</span>
+                    <div className="detail-workbench__file-list-actions">
+                      <button type="button" onClick={() => fileInputRef.current?.click()}>
+                        继续添加
+                      </button>
+                      <button type="button" onClick={clearAll}>
+                        <Trash2 size={14} /> 清空
+                      </button>
+                    </div>
+                  </div>
+                  <div className="detail-workbench__file-scroll">
+                    {fileQueue.map((item) => (
+                      <FileItem key={item.id} item={item} onRemove={removeFile} />
+                    ))}
+                  </div>
                 </div>
-              ) : null}
+              )}
             </>
           )}
         </div>
       </section>
 
+      {/* ─── Right: Settings & Results ─── */}
       <section className="detail-workbench__panel">
-        <h2>{resultTitleFor(tool)}</h2>
+        <h2>{resultTitleFor()}</h2>
 
         <div className="detail-workbench__fields">
           {isImageCompress ? (
             <>
               <div className="detail-field">
-                <label>压缩模式</label>
-                <DetailSelect
-                  options={['保持画质优先', '控制在 2MB 内', '控制在 1MB 内']}
-                  value={settings.limit}
-                  onChange={(nextValue) => handleSettingChange('limit', nextValue)}
-                />
-              </div>
-
-              <div className="detail-field">
-                <label>压缩质量</label>
+                <label>压缩质量 <span className="detail-field__value">{qualityValue}%</span></label>
                 <div className="detail-range">
                   <input
                     max="100"
-                    min="0"
+                    min="1"
                     step="1"
                     type="range"
                     value={qualityValue}
-                    onChange={(event) => {
-                      const nextValue = Number(event.target.value);
-                      setQualityValue(nextValue);
-                      handleSettingChange('quality', labelFromQualityValue(nextValue));
-                    }}
+                    onInput={(e) => setQualityValue(Number(e.target.value))}
+                    style={{ '--range-progress': `${qualityValue}%` }}
                   />
+                  <div className="detail-range__labels">
+                    <span>更小体积</span>
+                    <span>更高画质</span>
+                  </div>
                 </div>
               </div>
 
@@ -603,6 +743,171 @@ export default function Workbench({ tool }) {
                 />
               </div>
             </>
+          ) : tool.id === 'image-resize' ? (
+            <>
+              <div className="detail-field">
+                <label>尺寸预设</label>
+                <DetailSelect
+                  options={['公众号封面 900×383', '工牌照 358×441', '自定义尺寸']}
+                  value={settings.preset}
+                  onChange={(v) => handleSettingChange('preset', v)}
+                />
+              </div>
+
+              <div className="detail-field">
+                <label>宽度 × 高度 (px)</label>
+                <div className="detail-resize-dims">
+                  <input
+                    className="detail-resize-dims__input"
+                    type="number"
+                    min="1"
+                    max="9999"
+                    value={resizeWidth}
+                    onChange={(e) => {
+                      const w = Math.max(1, Number(e.target.value) || 1);
+                      setResizeWidth(w);
+                      if (lockRatio) setResizeHeight(Math.round(w / aspectRatio));
+                      if (settings.preset !== '自定义尺寸') handleSettingChange('preset', '自定义尺寸');
+                    }}
+                  />
+                  <button
+                    className={`detail-resize-dims__lock ${lockRatio ? 'is-locked' : ''}`}
+                    type="button"
+                    title={lockRatio ? '解锁比例' : '锁定比例'}
+                    onClick={() => {
+                      if (!lockRatio) setAspectRatio(resizeWidth / resizeHeight);
+                      setLockRatio(!lockRatio);
+                    }}
+                  >
+                    {lockRatio ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                      </svg>
+                    )}
+                  </button>
+                  <input
+                    className="detail-resize-dims__input"
+                    type="number"
+                    min="1"
+                    max="9999"
+                    value={resizeHeight}
+                    onChange={(e) => {
+                      const h = Math.max(1, Number(e.target.value) || 1);
+                      setResizeHeight(h);
+                      if (lockRatio) setResizeWidth(Math.round(h * aspectRatio));
+                      if (settings.preset !== '自定义尺寸') handleSettingChange('preset', '自定义尺寸');
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="detail-field">
+                <label>适配方式</label>
+                <DetailSegmented
+                  options={['完整显示', '居中裁切', '拉伸填满']}
+                  value={settings.fit}
+                  onChange={(v) => handleSettingChange('fit', v)}
+                />
+              </div>
+            </>
+          ) : isQrMode ? (
+            <>
+              <div className="detail-field-row">
+                <div className="detail-field detail-field--half">
+                  <label>导出样式</label>
+                  <DetailSelect
+                    options={QR_STYLES.map((s) => s.label)}
+                    value={QR_STYLES.find((s) => s.id === qrStyleId)?.label || '经典黑白'}
+                    onChange={(v) => {
+                      const found = QR_STYLES.find((s) => s.label === v);
+                      if (found) setQrStyleId(found.id);
+                    }}
+                  />
+                </div>
+                <div className="detail-field detail-field--half">
+                  <label>中心 Logo</label>
+                  <input
+                    ref={qrLogoInputRef}
+                    accept=".png,.jpg,.jpeg,.svg,.webp"
+                    type="file"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setQrLogo(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <div className="detail-qr-logo-field">
+                    {qrLogo ? (
+                      <div className="detail-qr-logo-field__preview">
+                        <img src={URL.createObjectURL(qrLogo)} alt="Logo" />
+                        <button type="button" onClick={() => setQrLogo(null)}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : null}
+                    <button
+                      className="detail-qr-logo-field__btn"
+                      type="button"
+                      onClick={() => qrLogoInputRef.current?.click()}
+                    >
+                      {qrLogo ? '更换' : '上传 Logo'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="detail-field">
+                <label>尺寸 <span className="detail-field__value">{qrSize}px</span></label>
+                <div className="detail-qr-size-row">
+                  <input
+                    className="detail-resize-dims__input"
+                    type="number"
+                    min="128"
+                    max="1024"
+                    step="32"
+                    value={qrSize}
+                    onChange={(e) => setQrSize(Math.max(128, Math.min(1024, Number(e.target.value) || 256)))}
+                  />
+                  <div className="detail-range" style={{ flex: 1 }}>
+                    <input
+                      max="1024"
+                      min="128"
+                      step="32"
+                      type="range"
+                      value={qrSize}
+                      onInput={(e) => setQrSize(Number(e.target.value))}
+                      style={{ '--range-progress': `${((qrSize - 128) / (1024 - 128)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {textInput.trim() ? (
+                <div className="detail-qr-live-preview">
+                  <button
+                    className="detail-qr-live-preview__refresh"
+                    type="button"
+                    title="换一个样式"
+                    onClick={randomQrStyle}
+                  >
+                    <RefreshCcw size={16} />
+                  </button>
+                  <QrCanvas
+                    value={textInput.trim()}
+                    size={qrSize}
+                    styleId={qrStyleId}
+                    logo={qrLogo}
+                  />
+                </div>
+              ) : null}
+            </>
           ) : (
             tool.settings.map((setting) => (
               <div className="detail-field" key={setting.id}>
@@ -611,13 +916,13 @@ export default function Workbench({ tool }) {
                   <DetailSelect
                     options={setting.options}
                     value={settings[setting.id]}
-                    onChange={(nextValue) => handleSettingChange(setting.id, nextValue)}
+                    onChange={(v) => handleSettingChange(setting.id, v)}
                   />
                 ) : (
                   <DetailSegmented
                     options={setting.options}
                     value={settings[setting.id]}
-                    onChange={(nextValue) => handleSettingChange(setting.id, nextValue)}
+                    onChange={(v) => handleSettingChange(setting.id, v)}
                   />
                 )}
               </div>
@@ -625,66 +930,170 @@ export default function Workbench({ tool }) {
           )}
         </div>
 
-        <button
-          className="detail-workbench__action"
-          disabled={isProcessing || !hasInput}
-          type="button"
-          onClick={handleSimulate}
-        >
-          {isProcessing ? '处理中…' : tool.actionLabel}
-        </button>
+        {/* Action button */}
+        {isTextMode && isQrMode ? (
+          <div className="detail-workbench__action-row">
+            <button
+              className="detail-workbench__action"
+              disabled={!hasInput}
+              type="button"
+              onClick={handleTextProcess}
+            >
+              生成二维码
+            </button>
+            <button
+              className="detail-workbench__action detail-workbench__action--download"
+              disabled={!textInput.trim()}
+              type="button"
+              onClick={() => {
+                const canvas = document.querySelector('.detail-qr-canvas');
+                if (canvas) {
+                  canvas.toBlob((blob) => {
+                    if (blob) saveAs(blob, `qrcode-${qrSize}px.png`);
+                  });
+                }
+              }}
+            >
+              <Download size={16} />
+              下载
+            </button>
+          </div>
+        ) : isTextMode ? (
+          <button
+            className="detail-workbench__action"
+            disabled={!hasInput}
+            type="button"
+            onClick={handleTextProcess}
+          >
+            {tool.actionLabel}
+          </button>
+        ) : (
+          <div className="detail-workbench__action-row">
+            <button
+              className="detail-workbench__action"
+              disabled={isProcessing || !hasInput || (!hasPending && !allDone)}
+              type="button"
+              onClick={() => {
+                if (allDone && !hasPending && isImageCompress) {
+                  reCompress();
+                  // Process will be triggered after state update
+                  setTimeout(() => processFiles(), 50);
+                } else {
+                  processFiles();
+                }
+              }}
+            >
+              {isProcessing ? '处理中…' : allDone && isImageCompress ? '重新压缩' : tool.actionLabel}
+            </button>
+            {allDone && doneCount > 0 && (
+              <>
+                {isImageCompress && (
+                  <button
+                    className="detail-workbench__action detail-workbench__action--compare"
+                    type="button"
+                    onClick={() => {
+                      const first = fileQueue.find((f) => f.status === 'done' && f.blob);
+                      if (first) { setCompareItem(first); setCompareOpen(true); setComparePosition(50); }
+                    }}
+                  >
+                    对比预览
+                  </button>
+                )}
+                <button
+                  className="detail-workbench__action detail-workbench__action--download"
+                  type="button"
+                  onClick={downloadAll}
+                >
+                  <Download size={18} />
+                  {doneCount > 1 ? '打包下载' : '下载'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
+        {/* Results */}
         <div className="detail-workbench__result">
-          <p className="detail-workbench__result-copy">{primaryStatus}</p>
-
-          {compressSummary ? (
+          {!isTextMode && fileQueue.length > 0 && isImageCompress && allDone && (
             <div className="detail-workbench__stats">
               <article>
-                <strong>{compressSummary.origin}</strong>
+                <strong>{formatBytes(fileQueue.reduce((s, f) => s + f.originSize, 0))}</strong>
                 <span>压缩前</span>
               </article>
               <article>
-                <strong>{compressSummary.result}</strong>
+                <strong>{formatBytes(fileQueue.filter((f) => f.status === 'done').reduce((s, f) => s + (f.resultSize || f.originSize), 0))}</strong>
                 <span>压缩后</span>
               </article>
               <article>
-                <strong>{compressSummary.reduced}</strong>
-                <span>可减少</span>
+                <strong>
+                  {(() => {
+                    const totalOrigin = fileQueue.reduce((s, f) => s + f.originSize, 0);
+                    const totalResult = fileQueue.filter((f) => f.status === 'done').reduce((s, f) => s + (f.resultSize || f.originSize), 0);
+                    const percent = totalOrigin > 0 ? Math.round((1 - totalResult / totalOrigin) * 100) : 0;
+                    return percent > 0 ? `-${percent}%` : '已是最优';
+                  })()}
+                </strong>
+                <span>节省</span>
               </article>
             </div>
-          ) : null}
+          )}
 
-          {queue.length > 0 ? (
-            <div className="detail-workbench__queue">
-              {queue.slice(0, 4).map((item) => (
-                <div className="detail-workbench__queue-row" key={`${item.name}-${item.result}`}>
-                  <strong>{item.name}</strong>
-                  <span>
-                    {item.origin} → {item.result}
-                  </span>
-                  <em>{item.status}</em>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {isTextMode && textPreview ? (
+          {isTextMode && textProcessed && textPreview && !isQrMode ? (
             <div className="detail-workbench__text-result">
               <strong>{textPreview.title}</strong>
               <span>{textPreview.meta}</span>
               <pre>{textPreview.body}</pre>
-            </div>
-          ) : null}
-
-          {isQrMode && textInput.trim() ? (
-            <div className="detail-workbench__text-result">
-              <strong>{isSuccess ? '二维码已生成' : '二维码预览已准备好'}</strong>
-              <span>{settings.style}</span>
-              <pre>{textInput.trim()}</pre>
+              <button
+                className="detail-workbench__copy-btn"
+                type="button"
+                onClick={() => navigator.clipboard?.writeText(textPreview.body)}
+              >
+                复制结果
+              </button>
             </div>
           ) : null}
         </div>
       </section>
+
+      {/* ─── Compare Preview Modal ─── */}
+      {compareOpen && compareItem && (
+        <div className="detail-compare-overlay" onClick={() => setCompareOpen(false)}>
+          <div className="detail-compare-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-compare-modal__header">
+              <h3>压缩前后对比</h3>
+              <button type="button" onClick={() => setCompareOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="detail-compare-modal__body">
+              <div className="detail-compare-slider" style={{ '--compare-pos': `${comparePosition}%` }}>
+                <div className="detail-compare-slider__before">
+                  <img src={URL.createObjectURL(compareItem.file)} alt="压缩前" />
+                  <span className="detail-compare-slider__label detail-compare-slider__label--before">
+                    压缩前 · {formatBytes(compareItem.originSize)}
+                  </span>
+                </div>
+                <div className="detail-compare-slider__after">
+                  <img src={URL.createObjectURL(compareItem.blob)} alt="压缩后" />
+                  <span className="detail-compare-slider__label detail-compare-slider__label--after">
+                    压缩后 · {formatBytes(compareItem.resultSize)}
+                  </span>
+                </div>
+                <input
+                  className="detail-compare-slider__input"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={comparePosition}
+                  onInput={(e) => setComparePosition(Number(e.target.value))}
+                />
+                <div className="detail-compare-slider__handle" />
+              </div>
+            </div>
+            <p className="detail-compare-modal__hint">← 拖动滑块对比压缩效果 →</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

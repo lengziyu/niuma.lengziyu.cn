@@ -1,10 +1,24 @@
 import { ArrowRight, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ToolIcon } from './ToolIllustration';
 
 export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
+  const navigate = useNavigate();
+
+  function handleCardClick(e) {
+    // Don't navigate if clicking the favorite button
+    if (e.target.closest('.niuma-tool-card__fav')) return;
+    navigate(`/tools/${tool.id}`);
+  }
+
   return (
-    <article className={`niuma-tool-card niuma-tool-card--${tool.accent}`}>
+    <article
+      className={`niuma-tool-card niuma-tool-card--${tool.accent}`}
+      onClick={handleCardClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(e); }}
+    >
       <div className="niuma-tool-card__top">
         <div>
           <p className="niuma-tool-card__category">{tool.category}</p>
@@ -12,9 +26,12 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
         </div>
         <button
           aria-label={isFavorite ? `取消收藏 ${tool.name}` : `收藏 ${tool.name}`}
-          className={isFavorite ? 'is-active' : ''}
+          className={`niuma-tool-card__fav ${isFavorite ? 'is-active' : ''}`}
           type="button"
-          onClick={() => onToggleFavorite(tool.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(tool.id);
+          }}
         >
           <Star aria-hidden="true" size={18} />
         </button>
@@ -36,10 +53,10 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
             <ToolIcon kind={tool.iconKind} />
           )}
         </div>
-        <Link className="niuma-tool-card__link" to={`/tools/${tool.id}`}>
+        <span className="niuma-tool-card__link">
           <span>打开</span>
           <ArrowRight aria-hidden="true" size={16} />
-        </Link>
+        </span>
       </div>
     </article>
   );

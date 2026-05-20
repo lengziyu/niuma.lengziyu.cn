@@ -11,17 +11,17 @@ export const heroHotTags = ['PDF转Word', '图片压缩', '生成二维码', 'PD
 export const featureItems = [
   {
     title: '打开就能用',
-    description: '无需注册登录，打开网页就能用，简单直接。',
+    description: '无需注册登录，打开网页直接开始',
     icon: 'instant'
   },
   {
-    title: '本地优先处理',
-    description: '文件在本地处理，保护你的隐私和数据安全。',
+    title: '本地处理',
+    description: '文件不上传服务器，隐私安全有保障',
     icon: 'local'
   },
   {
-    title: '免费又好用',
-    description: '所有工具永久免费，助你高效办公每一天。',
+    title: '永久免费',
+    description: '所有工具完全免费，无限制使用',
     icon: 'free'
   }
 ];

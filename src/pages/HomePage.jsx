@@ -38,14 +38,14 @@ function pickAnotherIndex(length, currentIndex) {
 
 function FeatureIcon({ icon }) {
   if (icon === 'instant') {
-    return <Zap aria-hidden="true" size={28} />;
+    return <Zap aria-hidden="true" size={18} />;
   }
 
   if (icon === 'local') {
-    return <ShieldCheck aria-hidden="true" size={28} />;
+    return <ShieldCheck aria-hidden="true" size={18} />;
   }
 
-  return <Sparkles aria-hidden="true" size={28} />;
+  return <Sparkles aria-hidden="true" size={18} />;
 }
 
 export default function HomePage({ theme, setTheme }) {

@@ -602,8 +602,8 @@ export const tools = [
         id: 'style',
         label: '导出样式',
         type: 'select',
-        options: ['标准黑白', '柔和红灰', '深色反白'],
-        defaultValue: '柔和红灰'
+        options: ['经典黑白', '深邃黑', '紫罗兰', '海洋蓝', '森林绿', '日落橙', '玫瑰粉', '深色反白', '午夜蓝'],
+        defaultValue: '经典黑白'
       }
     ],
     tips: [

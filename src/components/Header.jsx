@@ -1,5 +1,9 @@
-import { Grid2x2, Heart, House } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
+import {
+  FavoriteNavIcon,
+  HomeNavIcon,
+  ToolsNavIcon
+} from './icons/AppIcons';
 import ThemeToggle from './ThemeToggle';
 
 export default function Header({
@@ -7,25 +11,30 @@ export default function Header({
   theme,
   setTheme,
   navItems,
-  onNavClick
+  onNavClick,
+  hidesBrand
 }) {
   const iconMap = {
-    home: House,
-    all: Grid2x2,
-    favorites: Heart
+    home: HomeNavIcon,
+    all: ToolsNavIcon,
+    favorites: FavoriteNavIcon
   };
 
   return (
-    <header className="niuma-home__header">
-      <Link className="niuma-home__brand" to="/">
-        <img alt="牛马百宝箱 Logo" src="/images/avatar-cow.png" />
-        <span>牛马百宝箱</span>
-      </Link>
+    <header className={`niuma-home__header ${hidesBrand ? 'niuma-home__header--centered' : ''}`}>
+      <div className="niuma-home__brand-slot">
+        {!hidesBrand && (
+          <Link className="niuma-home__brand" to="/">
+            <img alt="牛马百宝箱 Logo" src="/images/avatar-cow.png" />
+            <span>牛马百宝箱</span>
+          </Link>
+        )}
+      </div>
 
       <div className="niuma-home__header-controls">
         <nav aria-label="主导航" className="niuma-home__nav">
           {navItems.map((item) => {
-            const Icon = iconMap[item.key] ?? Grid2x2;
+            const Icon = iconMap[item.key] ?? ToolsNavIcon;
             const to = item.path ?? '/';
 
             return (
@@ -37,7 +46,7 @@ export default function Header({
                 to={to}
                 onClick={() => onNavClick?.(item.key)}
               >
-                <Icon aria-hidden="true" size={24} strokeWidth={2.1} />
+                <Icon />
                 <span>{item.label}</span>
               </NavLink>
             );

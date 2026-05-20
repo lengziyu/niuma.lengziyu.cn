@@ -10,21 +10,20 @@ import {
   useSensor,
   useSensors
 } from '@dnd-kit/core';
-import { ChevronRight, Clock3, Play, RotateCcw } from 'lucide-react';
+import { Clock3, Play, RotateCcw } from 'lucide-react';
 import { miniGameBoxes, miniGameFilePool, miniGameTips } from '../data/home';
 
 const DEFAULT_TIME = 30;
 const DEFAULT_TARGET_SCORE = 100;
-const INITIAL_FILE_COUNT = 6;
-const MIN_VISIBLE_FILES = 4;
-const MAX_VISIBLE_FILES = 6;
+const INITIAL_FILE_COUNT = 5;
+const MIN_VISIBLE_FILES = 3;
+const MAX_VISIBLE_FILES = 5;
 const FILE_SLOTS = [
-  { x: 10, y: 12 },
-  { x: 31, y: 10 },
-  { x: 54, y: 13 },
-  { x: 16, y: 52 },
-  { x: 40, y: 50 },
-  { x: 63, y: 48 }
+  { x: 8, y: 10 },
+  { x: 32, y: 8 },
+  { x: 56, y: 12 },
+  { x: 20, y: 50 },
+  { x: 46, y: 48 }
 ];
 
 function randomBetween(min, max) {
@@ -179,7 +178,7 @@ export default function MiniGame({
   const binRefs = React.useRef({});
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 }
+      activationConstraint: { distance: 5 }
     })
   );
 
@@ -446,25 +445,23 @@ export default function MiniGame({
     clearFeedbackSoon();
   }
 
-  const tipText =
-    game.status === 'idle'
-      ? miniGameTips.idle
-      : game.status === 'finished'
-        ? game.resultTitle || getResultCopy(game.score).title
-        : game.tip;
-
   return (
     <div className="niuma-widget niuma-widget--game">
       <div className="niuma-widget__header">
-        <div className="niuma-widget__title">文件整理小游戏</div>
+        <div className="niuma-widget__title">
+          <span>📂</span>
+          <span>文件整理</span>
+        </div>
         <div className="niuma-game__header-tools">
-          <div className={`niuma-game__timer ${game.timeLeft <= 5 ? 'is-urgent' : ''}`}>
-            <Clock3 aria-hidden="true" size={14} />
-            <span>{countdownLabel}</span>
-          </div>
+          {game.status === 'playing' && (
+            <div className={`niuma-game__timer ${game.timeLeft <= 5 ? 'is-urgent' : ''}`}>
+              <Clock3 aria-hidden="true" size={12} />
+              <span>{countdownLabel}</span>
+            </div>
+          )}
           <button className="niuma-home__primary-pill niuma-game__start-btn" type="button" onClick={beginGame}>
-            {game.status === 'idle' ? <Play aria-hidden="true" size={16} /> : <RotateCcw aria-hidden="true" size={16} />}
-            <span>{game.status === 'idle' ? '开始游戏' : '重新开始'}</span>
+            {game.status === 'idle' ? <Play aria-hidden="true" size={14} /> : <RotateCcw aria-hidden="true" size={14} />}
+            <span>{game.status === 'idle' ? '开始' : '重来'}</span>
           </button>
         </div>
       </div>
@@ -491,7 +488,11 @@ export default function MiniGame({
                 key={file.id}
               />
             ))}
-            {game.status !== 'idle' ? (
+            {game.status === 'idle' ? (
+              <div className="niuma-game__bubble is-idle">
+                点击开始，把文件拖到对应箱子里
+              </div>
+            ) : game.feedbackKind ? (
               <div
                 className={`niuma-game__bubble ${
                   game.feedbackKind === 'error'
@@ -501,19 +502,19 @@ export default function MiniGame({
                       : ''
                 }`}
               >
-                {tipText}
+                {game.feedbackKind === 'success' ? '✓ 正确！' : '✗ 放错了'}
               </div>
             ) : null}
           </div>
-        </div>
 
-        <div className="niuma-game__bins">
-          {miniGameBoxes.map((box) => {
-            const tone =
-              game.feedbackBin === box.type ? game.feedbackKind : game.hoverBin === box.type ? 'hover' : '';
+          <div className="niuma-game__bins">
+            {miniGameBoxes.map((box) => {
+              const tone =
+                game.feedbackBin === box.type ? game.feedbackKind : game.hoverBin === box.type ? 'hover' : '';
 
-            return <BinTarget box={box} key={box.type} onRegister={registerBinRef} tone={tone} />;
-          })}
+              return <BinTarget box={box} key={box.type} onRegister={registerBinRef} tone={tone} />;
+            })}
+          </div>
         </div>
 
         <DragOverlay dropAnimation={null}>
@@ -527,15 +528,13 @@ export default function MiniGame({
 
       <div className="niuma-game__footer">
         <div className="niuma-game__footer-copy">
-          <p className="niuma-widget__subcopy">把文件拖到正确的箱子里吧！</p>
           <p>
             得分：<strong>{game.score}</strong>
           </p>
+          {game.status === 'playing' && (
+            <p className="niuma-widget__subcopy">还差 {remainingToWin} 个通关</p>
+          )}
         </div>
-        <button className="niuma-widget__text-btn niuma-game__more-btn" type="button">
-          <span>更多游戏</span>
-          <ChevronRight aria-hidden="true" size={15} />
-        </button>
       </div>
 
       {game.resultOpen ? (
@@ -543,7 +542,7 @@ export default function MiniGame({
           <strong>{game.resultTitle || getResultCopy(game.score).title}</strong>
           <p>{game.resultText || getResultCopy(game.score).text}</p>
           <button className="niuma-home__ghost-pill" type="button" onClick={beginGame}>
-            再玩一次
+            再来一局
           </button>
         </div>
       ) : null}
