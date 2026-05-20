@@ -1,0 +1,260 @@
+import { tools } from './tools';
+
+export const headerNavItems = [
+  { key: 'home', label: '首页', path: '/' },
+  { key: 'all', label: '工具', path: '/tools' },
+  { key: 'favorites', label: '收藏', path: '/favorites' }
+];
+
+export const heroHotTags = ['PDF转Word', '图片压缩', '生成二维码', 'PDF转图片'];
+
+export const featureItems = [
+  {
+    title: '打开就能用',
+    description: '无需注册登录，打开网页就能用，简单直接。',
+    icon: 'instant'
+  },
+  {
+    title: '本地优先处理',
+    description: '文件在本地处理，保护你的隐私和数据安全。',
+    icon: 'local'
+  },
+  {
+    title: '免费又好用',
+    description: '所有工具永久免费，助你高效办公每一天。',
+    icon: 'free'
+  }
+];
+
+export const cornerActions = [
+  { key: 'coffee', label: '喝杯咖啡', icon: 'coffee' },
+  { key: 'relax', label: '10秒放松', icon: 'relax' },
+  { key: 'encourage', label: '随机鼓励', icon: 'encourage' }
+];
+
+export const miniGameBoxes = [
+  { type: 'pdf', label: 'PDF文档', image: '/images/sprites/game-bin-pdf.png' },
+  { type: 'word', label: 'Word文档', image: '/images/sprites/game-bin-word.png' },
+  { type: 'image', label: '图片文件', image: '/images/sprites/game-bin-image.png' },
+  { type: 'sheet', label: '表格文件', image: '/images/sprites/game-bin-sheet.png' }
+];
+
+export const miniGameFilePool = [
+  { type: 'pdf', label: 'PDF', image: '/images/sprites/game-file-pdf.png' },
+  { type: 'word', label: 'WORD', image: '/images/sprites/game-file-word.png' },
+  { type: 'image', label: 'PNG', image: '/images/sprites/game-file-image.png' },
+  { type: 'sheet', label: 'XLS', image: '/images/sprites/game-file-sheet.png' },
+  { type: 'unknown', label: '?', image: '/images/sprites/game-file-unknown.png' }
+];
+
+export const miniGameTips = {
+  idle: '点开始试试，把文件拖回正确的箱子里。',
+  progress: '加油！再分对 {count} 个就能通关啦！',
+  success: '文件终于找到家啦！',
+  error: '哎呀，放错箱子啦～',
+  mystery: '这个文件太神秘啦。',
+  cleared: '这一轮整理得很顺，继续保持！',
+  win: '通关成功，今天的文件都被你拿捏住了！'
+};
+
+const recommendedToolIds = ['image-compress', 'pdf-to-word', 'word-to-pdf', 'qr-generator'];
+
+const toolMetaMap = {
+  'image-compress': {
+    title: 'PNG / JPG',
+    description: '压缩图片大小，支持多种格式转换，保持高清不失真。',
+    keywords: ['PNG转JPG', '图片压缩', 'JPG', 'PNG'],
+    format: 'PNG',
+    iconKind: 'compress',
+    accent: 'violet'
+  },
+  'image-resize': {
+    title: '修改尺寸',
+    description: '常见像素和比例预设一键套用，适合封面、头像和海报。',
+    keywords: ['尺寸调整', '裁切', '像素'],
+    format: 'SIZE',
+    iconKind: 'resize',
+    accent: 'blue'
+  },
+  'image-convert': {
+    title: '图片转换',
+    description: 'PNG、JPG、WebP 灵活互转，导出更轻巧。',
+    keywords: ['格式转换', 'WebP', 'JPG', 'PNG'],
+    format: 'IMG',
+    iconKind: 'convert',
+    accent: 'pink'
+  },
+  'image-to-pdf': {
+    title: '图片转PDF',
+    description: '多张图片整理成一个 PDF，报销和归档更省事。',
+    keywords: ['图片合成PDF', '截图转PDF'],
+    format: 'IMG',
+    iconKind: 'imagepdf',
+    accent: 'amber'
+  },
+  'image-ocr': {
+    title: '图片转文字',
+    description: '截图、海报、扫描件里的文字快速提取。',
+    keywords: ['OCR', '识别文字'],
+    format: 'OCR',
+    iconKind: 'ocr',
+    accent: 'violet'
+  },
+  'pdf-to-word': {
+    title: 'PDF',
+    description: 'PDF 与多种格式互转，提取文字，拆分合并更轻松。',
+    keywords: ['PDF转Word', 'PDF编辑', '文档转换'],
+    format: 'PDF',
+    iconKind: 'doc',
+    accent: 'red'
+  },
+  'word-to-pdf': {
+    title: 'DOC / DOCX',
+    description: 'Word 文档在线转换，格式不紊乱，排版更稳定。',
+    keywords: ['Word转PDF', 'DOCX', '文档导出'],
+    format: 'DOC',
+    iconKind: 'doc',
+    accent: 'blue'
+  },
+  'pdf-merge': {
+    title: '文档合并',
+    description: '多个 PDF 按顺序合并，一个文件发出去更清爽。',
+    keywords: ['PDF合并', '文档合并'],
+    format: 'MERGE',
+    iconKind: 'merge',
+    accent: 'violet'
+  },
+  'pdf-split': {
+    title: 'PDF拆分',
+    description: '按页码范围拆分文件，节选分享更方便。',
+    keywords: ['PDF拆分', '页码提取'],
+    format: 'SPLIT',
+    iconKind: 'split',
+    accent: 'amber'
+  },
+  'pdf-to-image': {
+    title: 'PDF转图片',
+    description: '把文档按页导出为图片，转发到群里更直观。',
+    keywords: ['PDF转图片', 'PDF截图', 'PNG'],
+    format: 'PDF',
+    iconKind: 'pdfimg',
+    accent: 'pink'
+  },
+  'pdf-watermark': {
+    title: 'PDF加水印',
+    description: '给草稿和内部资料添加统一水印标识。',
+    keywords: ['水印', '内部资料'],
+    format: 'MARK',
+    iconKind: 'watermark',
+    accent: 'red'
+  },
+  'excel-to-csv': {
+    title: 'Excel转CSV',
+    description: '适合系统导入、数据交换和批量整理。',
+    keywords: ['表格转换', 'CSV', 'Excel'],
+    format: 'XLS',
+    iconKind: 'sheet',
+    accent: 'green'
+  },
+  'csv-to-excel': {
+    title: 'CSV转Excel',
+    description: '把原始 CSV 转回 Excel，交付给同事更顺手。',
+    keywords: ['CSV转Excel', '表格'],
+    format: 'CSV',
+    iconKind: 'sheet',
+    accent: 'green'
+  },
+  'text-dedup': {
+    title: '文本去重',
+    description: '名单、关键词、标签快速去重，复制即用。',
+    keywords: ['文本处理', '去重'],
+    format: 'TXT',
+    iconKind: 'text',
+    accent: 'violet'
+  },
+  'qr-generator': {
+    title: '生成二维码',
+    description: '链接、文本一键生成二维码，美观清晰，可自定义样式。',
+    keywords: ['二维码', '链接分享'],
+    format: 'QR',
+    iconKind: 'qr',
+    accent: 'green'
+  },
+  'timestamp-convert': {
+    title: '时间戳转换',
+    description: '时间戳和日期互转，查日志和调接口更方便。',
+    keywords: ['时间', '日期', '日志'],
+    format: 'TIME',
+    iconKind: 'time',
+    accent: 'amber'
+  }
+};
+
+function fallbackIconKind(category) {
+  if (category.includes('图片')) {
+    return 'convert';
+  }
+
+  if (category.includes('文档')) {
+    return 'doc';
+  }
+
+  if (category.includes('表格')) {
+    return 'sheet';
+  }
+
+  return 'qr';
+}
+
+function fallbackAccent(category) {
+  if (category.includes('图片')) {
+    return 'violet';
+  }
+
+  if (category.includes('文档')) {
+    return 'blue';
+  }
+
+  if (category.includes('表格')) {
+    return 'green';
+  }
+
+  return 'pink';
+}
+
+export function getHomeToolCatalog() {
+  return tools.map((tool) => {
+    const meta = toolMetaMap[tool.id] ?? {};
+
+    return {
+      ...tool,
+      title: meta.title ?? tool.name,
+      description: meta.description ?? tool.tagline,
+      keywords: meta.keywords ?? [],
+      format: meta.format ?? tool.name.slice(0, 3).toUpperCase(),
+      iconKind: meta.iconKind ?? fallbackIconKind(tool.category),
+      iconImage: meta.iconImage ?? null,
+      accent: meta.accent ?? fallbackAccent(tool.category),
+      isRecommended: recommendedToolIds.includes(tool.id)
+    };
+  });
+}
+
+export function matchesToolSearch(tool, keyword) {
+  if (!keyword) {
+    return true;
+  }
+
+  const text = [
+    tool.name,
+    tool.title,
+    tool.category,
+    tool.description,
+    tool.tagline,
+    ...tool.keywords
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return text.includes(keyword.toLowerCase());
+}
