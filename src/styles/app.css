@@ -366,6 +366,14 @@
 }
 
 @media (min-width: 1181px) {
+  .niuma-home__primary {
+    padding-bottom: 0;
+  }
+
+  .niuma-home__features-module {
+    margin-top: auto;
+  }
+
   .niuma-home__sidebar {
     margin-top: -96px;
   }
@@ -768,6 +776,12 @@
 .niuma-home__features-module {
   margin-top: 0;
   padding: 0;
+}
+
+@media (min-width: 1181px) {
+  .niuma-home__features-module {
+    margin-top: auto;
+  }
 }
 
 .niuma-home__section-head {
