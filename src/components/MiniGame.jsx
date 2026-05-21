@@ -328,7 +328,8 @@ function BinTarget({ box, onRegister, tone }) {
 
 export default function MiniGame({
   initialTime = DEFAULT_TIME,
-  onFinish
+  onFinish,
+  style
 }) {
   const [game, setGame] = React.useState(() => createInitialGame(initialTime));
   const finishSentRef = React.useRef(false);
@@ -593,7 +594,10 @@ export default function MiniGame({
   }
 
   return (
-    <div className={`niuma-widget niuma-widget--game ${game.resultOpen ? 'has-result-open' : ''}`}>
+    <div
+      className={`niuma-widget niuma-widget--game ${game.resultOpen ? 'has-result-open' : ''}`}
+      style={style}
+    >
       <div className="niuma-widget__header">
         <div className="niuma-widget__title">
           <FolderOpen aria-hidden="true" size={16} />

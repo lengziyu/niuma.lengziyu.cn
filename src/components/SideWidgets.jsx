@@ -63,6 +63,7 @@ export default function SideWidgets({
   const contentRef = useRef(null);
   const scrambleTimerRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const [gameHeight, setGameHeight] = useState(null);
   const [coffeeFxToken, setCoffeeFxToken] = useState(0);
   const [encourageFxToken, setEncourageFxToken] = useState(0);
   const [displayQuote, setDisplayQuote] = useState('');
@@ -157,6 +158,63 @@ export default function SideWidgets({
           transformOrigin: 'top center'
         }
       : undefined;
+
+  useEffect(() => {
+    let rafId = 0;
+
+    function syncGameHeightWithLeftColumn() {
+      if (window.innerWidth <= 1180) {
+        setGameHeight(null);
+        return;
+      }
+
+      const content = contentRef.current;
+      const leftBottomBlock = document.querySelector('.niuma-home__features-module');
+      const gameWidget = content?.querySelector('.niuma-widget--game');
+
+      if (!content || !leftBottomBlock || !gameWidget) {
+        setGameHeight(null);
+        return;
+      }
+
+      const targetHeight = Math.round(
+        leftBottomBlock.getBoundingClientRect().bottom - gameWidget.getBoundingClientRect().top
+      );
+      const clampedHeight = Math.max(220, Math.min(640, targetHeight));
+
+      setGameHeight((current) => (current === clampedHeight ? current : clampedHeight));
+    }
+
+    function scheduleSync() {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = window.requestAnimationFrame(syncGameHeightWithLeftColumn);
+    }
+
+    scheduleSync();
+
+    const observer = new ResizeObserver(scheduleSync);
+
+    if (contentRef.current) {
+      observer.observe(contentRef.current);
+    }
+
+    const leftBottomBlock = document.querySelector('.niuma-home__features-module');
+    if (leftBottomBlock) {
+      observer.observe(leftBottomBlock);
+    }
+
+    window.addEventListener('resize', scheduleSync);
+
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      observer.disconnect();
+      window.removeEventListener('resize', scheduleSync);
+    };
+  }, [collapsed, fortune, quote, scale]);
 
   function handleQuickAction(actionKey) {
     onAction(actionKey);
@@ -296,7 +354,7 @@ export default function SideWidgets({
           <p className="niuma-fortune__note">{fortune.note} 💪</p>
         </section>
 
-        <MiniGame />
+        <MiniGame style={gameHeight ? { height: `${gameHeight}px` } : undefined} />
       </div>
     </div>
   );
