@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import FavoritesPage from './pages/FavoritesPage';
 import HomePage from './pages/HomePage';
+import HomePage1920 from './pages/HomePage1920';
 import ToolPage from './pages/ToolPage';
 import ToolsPage from './pages/ToolsPage';
 
@@ -34,6 +35,10 @@ export default function App() {
         <Route
           path="/"
           element={<HomePage theme={theme} setTheme={setTheme} />}
+        />
+        <Route
+          path="/home-1920"
+          element={<HomePage1920 theme={theme} setTheme={setTheme} />}
         />
         <Route
           path="/tools"

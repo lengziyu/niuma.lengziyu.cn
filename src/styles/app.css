@@ -53,6 +53,31 @@
   padding: 14px 0 14px;
 }
 
+.page--niuma-home-1920 .niuma-home__shell {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.page--niuma-home-1920 .niuma-home__hero-copy h1 {
+  max-width: 760px;
+}
+
+.page--niuma-home-1920 .niuma-home__search {
+  max-width: 560px;
+}
+
+@media (min-width: 1920px) {
+  .page--niuma-home-1920 .niuma-home__layout {
+    grid-template-columns: minmax(0, 2.15fr) minmax(340px, 0.85fr);
+  }
+
+  .page--niuma-home-1920 .niuma-home__hero-figure {
+    width: min(100%, 500px);
+  }
+}
+
 .niuma-home__header,
 .niuma-home__hero-card,
 .niuma-home__section,
@@ -4451,6 +4476,74 @@
   border-color: rgba(178, 167, 255, 0.15);
 }
 
+.dark .detail-compare-modal__title span {
+  color: #a6abc3;
+}
+
+.dark .detail-compare-modal__thumb {
+  border-color: rgba(178, 167, 255, 0.18);
+  background: rgba(30, 28, 50, 0.8);
+}
+
+.dark .detail-compare-modal__thumb.is-active {
+  border-color: rgba(167, 139, 250, 0.58);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.24);
+}
+
+.detail-compare-modal__title h3 {
+  margin: 0;
+}
+
+.detail-compare-modal__title span {
+  display: block;
+  margin-top: 6px;
+  color: #8c8fa4;
+  font-size: 12px;
+}
+
+.detail-compare-modal__thumb-strip {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px 16px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.detail-compare-modal__thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1.5px solid rgba(226, 220, 244, 0.96);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.detail-compare-modal__thumb:hover {
+  border-color: rgba(125, 88, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+.detail-compare-modal__thumb.is-active {
+  border-color: rgba(125, 88, 255, 0.62);
+  box-shadow: 0 10px 18px rgba(125, 88, 255, 0.14);
+}
+
+.detail-compare-modal__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .detail-compare-modal__header {
   display: flex;
   align-items: center;
@@ -4736,6 +4829,10 @@
 
   .detail-workbench__stats {
     grid-template-columns: 1fr;
+  }
+
+  .detail-compare-modal__thumb-strip {
+    padding: 0 20px 14px;
   }
 }
 

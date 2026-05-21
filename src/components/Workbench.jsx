@@ -134,6 +134,10 @@ function convertImage(file, targetFormat, background) {
   });
 }
 
+function isImageMime(mime) {
+  return typeof mime === 'string' && mime.startsWith('image/');
+}
+
 /* ─── Sub-components ─── */
 
 function DetailSelect({ options, value, onChange }) {
@@ -406,6 +410,7 @@ export default function Workbench({ tool }) {
   const [settings, setSettings] = useState(initialValues);
   const [qualityValue, setQualityValue] = useState(60);
   const [fileQueue, setFileQueue] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState({});
   const [textInput, setTextInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [outputFormat, setOutputFormat] = useState('保持原格式');
@@ -439,6 +444,19 @@ export default function Workbench({ tool }) {
   const [qrLogo, setQrLogo] = useState(null);
   const qrLogoInputRef = useRef(null);
 
+  const compareableFiles = useMemo(
+    () =>
+      fileQueue.filter(
+        (item) =>
+          item.status === 'done' &&
+          item.blob &&
+          isImageMime(item.file?.type) &&
+          isImageMime(item.blob.type)
+      ),
+    [fileQueue]
+  );
+  const comparePreviewUrls = compareItem ? previewUrls[compareItem.id] : null;
+
   function randomQrStyle() {
     const others = QR_STYLES.filter((s) => s.id !== qrStyleId);
     const pick = others[Math.floor(Math.random() * others.length)];
@@ -452,7 +470,45 @@ export default function Workbench({ tool }) {
     setTextInput('');
     setIsProcessing(false);
     setOutputFormat('保持原格式');
+    setCompareOpen(false);
+    setCompareItem(null);
   }, [initialValues, tool.id]);
+
+  useEffect(() => {
+    const nextUrls = {};
+    const revokeFns = [];
+
+    fileQueue.forEach((item) => {
+      const urls = {};
+
+      if (isImageMime(item.file?.type)) {
+        urls.original = URL.createObjectURL(item.file);
+        revokeFns.push(() => URL.revokeObjectURL(urls.original));
+      }
+
+      if (item.blob && isImageMime(item.blob.type)) {
+        urls.result = URL.createObjectURL(item.blob);
+        revokeFns.push(() => URL.revokeObjectURL(urls.result));
+      }
+
+      if (urls.original || urls.result) {
+        nextUrls[item.id] = urls;
+      }
+    });
+
+    setPreviewUrls(nextUrls);
+
+    return () => {
+      revokeFns.forEach((revoke) => revoke());
+    };
+  }, [fileQueue]);
+
+  useEffect(() => {
+    if (!compareItem) return;
+    if (!compareableFiles.some((item) => item.id === compareItem.id)) {
+      setCompareItem(compareableFiles[0] ?? null);
+    }
+  }, [compareItem, compareableFiles]);
 
   function handleSettingChange(id, nextValue) {
     setSettings((cur) => ({ ...cur, [id]: nextValue }));
@@ -514,22 +570,14 @@ export default function Workbench({ tool }) {
     setFileQueue([]);
   }
 
-  // Re-compress: reset done files to pending so they can be processed again with new settings
-  function reCompress() {
-    setFileQueue((cur) => cur.map((f) => f.status === 'done' || f.status === 'error'
-      ? { ...f, status: 'pending', blob: null, resultSize: null }
-      : f
-    ));
-  }
-
   /* ─── Process files ─── */
 
-  const processFiles = useCallback(async () => {
+  const processFiles = useCallback(async (queue = fileQueue) => {
     if (processingRef.current) return;
     processingRef.current = true;
     setIsProcessing(true);
 
-    const pending = fileQueue.filter((f) => f.status === 'pending');
+    const pending = queue.filter((f) => f.status === 'pending');
 
     for (const item of pending) {
       setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'processing' } : f));
@@ -580,6 +628,23 @@ export default function Workbench({ tool }) {
     setIsProcessing(false);
     processingRef.current = false;
   }, [fileQueue, isImageCompress, outputFormat, qualityValue, resizeWidth, resizeHeight, settings, tool.id]);
+
+  function rerunWithCurrentSettings() {
+    const nextQueue = fileQueue.map((item) =>
+      item.status === 'done' || item.status === 'error'
+        ? {
+            ...item,
+            status: 'pending',
+            blob: null,
+            resultSize: null,
+            outputName: null
+          }
+        : item
+    );
+
+    setFileQueue(nextQueue);
+    void processFiles(nextQueue);
+  }
 
   /* ─── Process text ─── */
 
@@ -991,16 +1056,14 @@ export default function Workbench({ tool }) {
               disabled={isProcessing || !hasInput || (!hasPending && !allDone)}
               type="button"
               onClick={() => {
-                if (allDone && !hasPending && isImageCompress) {
-                  reCompress();
-                  // Process will be triggered after state update
-                  setTimeout(() => processFiles(), 50);
+                if (allDone && !hasPending) {
+                  rerunWithCurrentSettings();
                 } else {
-                  processFiles();
+                  void processFiles();
                 }
               }}
             >
-              {isProcessing ? '处理中…' : allDone && isImageCompress ? '重新压缩' : tool.actionLabel}
+              {isProcessing ? '处理中…' : allDone ? (isImageCompress ? '重新压缩' : '重新执行') : tool.actionLabel}
             </button>
             {allDone && doneCount > 0 && (
               <>
@@ -1009,8 +1072,8 @@ export default function Workbench({ tool }) {
                     className="detail-workbench__action detail-workbench__action--compare"
                     type="button"
                     onClick={() => {
-                      const first = fileQueue.find((f) => f.status === 'done' && f.blob);
-                      if (first) { setCompareItem(first); setCompareOpen(true); setComparePosition(50); }
+                      const target = compareableFiles[0] ?? null;
+                      if (target) { setCompareItem(target); setCompareOpen(true); setComparePosition(50); }
                     }}
                   >
                     对比预览
@@ -1077,21 +1140,46 @@ export default function Workbench({ tool }) {
         <div className="detail-compare-overlay" onClick={() => setCompareOpen(false)}>
           <div className="detail-compare-modal" onClick={(e) => e.stopPropagation()}>
             <div className="detail-compare-modal__header">
-              <h3>压缩前后对比</h3>
+              <div className="detail-compare-modal__title">
+                <h3>压缩前后对比</h3>
+                <span>{compareItem.name}</span>
+              </div>
               <button type="button" onClick={() => setCompareOpen(false)}>
                 <X size={20} />
               </button>
             </div>
+            {compareableFiles.length > 1 ? (
+              <div className="detail-compare-modal__thumb-strip" role="tablist" aria-label="切换对比文件">
+                {compareableFiles.map((item) => {
+                  const urls = previewUrls[item.id];
+                  const thumbSrc = urls?.result || urls?.original;
+                  if (!thumbSrc) return null;
+
+                  return (
+                    <button
+                      aria-selected={compareItem.id === item.id}
+                      className={`detail-compare-modal__thumb ${compareItem.id === item.id ? 'is-active' : ''}`}
+                      key={item.id}
+                      role="tab"
+                      type="button"
+                      onClick={() => setCompareItem(item)}
+                    >
+                      <img alt={item.name} src={thumbSrc} />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             <div className="detail-compare-modal__body">
               <div className="detail-compare-slider" style={{ '--compare-pos': `${comparePosition}%` }}>
                 <div className="detail-compare-slider__before">
-                  <img src={URL.createObjectURL(compareItem.file)} alt="压缩前" />
+                  <img src={comparePreviewUrls?.original} alt="压缩前" />
                   <span className="detail-compare-slider__label detail-compare-slider__label--before">
                     压缩前 · {formatBytes(compareItem.originSize)}
                   </span>
                 </div>
                 <div className="detail-compare-slider__after">
-                  <img src={URL.createObjectURL(compareItem.blob)} alt="压缩后" />
+                  <img src={comparePreviewUrls?.result} alt="压缩后" />
                   <span className="detail-compare-slider__label detail-compare-slider__label--after">
                     压缩后 · {formatBytes(compareItem.resultSize)}
                   </span>
