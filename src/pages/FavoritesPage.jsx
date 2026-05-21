@@ -1,28 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Header from '../components/Header';
 import ToolCard from '../components/ToolCard';
 import { getHomeToolCatalog, headerNavItems } from '../data/home';
+import useFavoriteIds from '../hooks/useFavoriteIds';
 
 export default function FavoritesPage({ theme, setTheme }) {
-  const [favoriteIds, setFavoriteIds] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem('niuma-home-favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
+  const { favoriteSet, setFavoriteIds } = useFavoriteIds();
   const allTools = useMemo(() => getHomeToolCatalog(), []);
-  const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
   const favoriteTools = useMemo(
     () => allTools.filter((tool) => favoriteSet.has(tool.id)),
     [allTools, favoriteSet]
   );
-
-  useEffect(() => {
-    window.localStorage.setItem('niuma-home-favorites', JSON.stringify(favoriteIds));
-  }, [favoriteIds]);
 
   function toggleFavorite(toolId) {
     setFavoriteIds((current) => current.filter((id) => id !== toolId));

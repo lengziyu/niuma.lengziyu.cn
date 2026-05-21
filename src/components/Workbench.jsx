@@ -464,8 +464,9 @@ export default function Workbench({ tool }) {
     }
   }
 
-  function addFiles(rawFiles) {
-    const newItems = Array.from(rawFiles).map((file) => ({
+  async function addFiles(rawFiles) {
+    const files = Array.from(rawFiles);
+    const newItems = files.map((file) => ({
       id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
       name: file.name,
       file,
@@ -476,17 +477,33 @@ export default function Workbench({ tool }) {
       status: 'pending'
     }));
     setFileQueue((cur) => [...cur, ...newItems]);
+
+    if (tool.id === 'image-resize' && files.length > 0 && fileQueue.length === 0) {
+      try {
+        const firstImage = await loadImage(files[0]);
+        const nextWidth = Math.max(1, firstImage.naturalWidth || resizeWidth);
+        const nextHeight = Math.max(1, firstImage.naturalHeight || resizeHeight);
+        setResizeWidth(nextWidth);
+        setResizeHeight(nextHeight);
+        setAspectRatio(nextWidth / nextHeight);
+        if (settings.preset !== '自定义尺寸') {
+          setSettings((cur) => ({ ...cur, preset: '自定义尺寸' }));
+        }
+      } catch {
+        // Keep fallback dimensions when image metadata cannot be read.
+      }
+    }
   }
 
   function handleFilePick(event) {
-    if (event.target.files?.length) addFiles(event.target.files);
+    if (event.target.files?.length) void addFiles(event.target.files);
     event.target.value = '';
   }
 
   function handleDrop(event) {
     event.preventDefault();
     setIsDragging(false);
-    if (event.dataTransfer.files?.length) addFiles(event.dataTransfer.files);
+    if (event.dataTransfer.files?.length) void addFiles(event.dataTransfer.files);
   }
 
   function removeFile(id) {

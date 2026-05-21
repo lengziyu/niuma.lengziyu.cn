@@ -1,20 +1,19 @@
 import React from 'react';
 import {
-  closestCenter,
   DndContext,
   DragOverlay,
   MeasuringStrategy,
   PointerSensor,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors
 } from '@dnd-kit/core';
-import { Clock3, Play, RotateCcw } from 'lucide-react';
+import { Ban, Clock3, FolderOpen, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { miniGameBoxes, miniGameFilePool, miniGameTips } from '../data/home';
 
 const DEFAULT_TIME = 30;
-const DEFAULT_TARGET_SCORE = 100;
 const INITIAL_FILE_COUNT = 5;
 const MIN_VISIBLE_FILES = 3;
 const MAX_VISIBLE_FILES = 5;
@@ -22,9 +21,46 @@ const FILE_SLOTS = [
   { x: 8, y: 10 },
   { x: 32, y: 8 },
   { x: 56, y: 12 },
+  { x: 74, y: 10 },
+  { x: 82, y: 46 },
   { x: 20, y: 50 },
   { x: 46, y: 48 }
 ];
+
+const TYPE_ART = {
+  pdf: {
+    shortLabel: 'PDF',
+    bucketLabel: 'PDF',
+    primary: '#ff6b7f',
+    secondary: '#ff9aa8',
+    deep: '#b9344a',
+    soft: '#fff0f3'
+  },
+  image: {
+    shortLabel: 'PNG',
+    bucketLabel: 'PNG',
+    primary: '#55c878',
+    secondary: '#8ce5a3',
+    deep: '#28794a',
+    soft: '#effff4'
+  },
+  word: {
+    shortLabel: 'DOC',
+    bucketLabel: 'DOC',
+    primary: '#5c8dff',
+    secondary: '#91b5ff',
+    deep: '#2b55b8',
+    soft: '#eef4ff'
+  },
+  sheet: {
+    shortLabel: 'XLS',
+    bucketLabel: 'XLS',
+    primary: '#24bfa3',
+    secondary: '#76e2d1',
+    deep: '#147567',
+    soft: '#eafffb'
+  }
+};
 
 function randomBetween(min, max) {
   return Math.round(Math.random() * (max - min) + min);
@@ -36,10 +72,6 @@ function shuffle(items) {
 
 function nextId(prefix = 'file') {
   return `${prefix}-${crypto.randomUUID()}`;
-}
-
-function formatTip(template, value) {
-  return template.replace('{count}', String(value));
 }
 
 function buildFile(usedSlotIndexes = []) {
@@ -56,7 +88,6 @@ function buildFile(usedSlotIndexes = []) {
     id: nextId(),
     type: file.type,
     label: file.label,
-    icon: file.image,
     slotIndex,
     x: base.x + randomBetween(-1, 1),
     y: base.y + randomBetween(-2, 2),
@@ -95,24 +126,149 @@ function createInitialGame(initialTime) {
 }
 
 function getResultCopy(score) {
-  if (score >= 80) {
+  if (score >= 120) {
     return {
-      title: '整理大师，今天效率拉满！',
-      text: '文件排得明明白白，今天的你就是桌面秩序守护神。'
+      title: miniGameTips.finished,
+      text: `本轮得分 ${score}，文件排得明明白白。`
     };
   }
 
-  if (score >= 40) {
+  if (score >= 60) {
     return {
-      title: '不错不错，文件终于有家了！',
-      text: '再来一轮就更顺手了，摸鱼和整理可以两不误。'
+      title: miniGameTips.finished,
+      text: `本轮得分 ${score}，手速已经很稳了。`
     };
   }
 
   return {
-    title: '摸鱼可以，文件还是要整理一下～',
-    text: '别担心，重新开一局，下一轮一定会比这次稳。'
+    title: miniGameTips.finished,
+    text: `本轮得分 ${score}，再来一局很快就顺手。`
   };
+}
+
+function MiniFileArt({ type, label }) {
+  const art = TYPE_ART[type] ?? TYPE_ART.pdf;
+  const title = label || art.shortLabel;
+  const isImage = type === 'image';
+  const isSheet = type === 'sheet';
+  const isWord = type === 'word';
+  const gradientId = React.useId().replace(/:/g, '');
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="niuma-file-chip__svg"
+      viewBox="0 0 86 82"
+      role="img"
+    >
+      <defs>
+        <linearGradient id={`${gradientId}-file`} x1="12" x2="74" y1="7" y2="72" gradientUnits="userSpaceOnUse">
+          <stop stopColor={art.soft} />
+          <stop offset="1" stopColor="#ffffff" />
+        </linearGradient>
+        <linearGradient id={`${gradientId}-badge`} x1="0" x2="1" y1="0" y2="1">
+          <stop stopColor={art.secondary} />
+          <stop offset="1" stopColor={art.primary} />
+        </linearGradient>
+      </defs>
+      <path
+        d="M15 7h42l14 14v49a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V13a6 6 0 0 1 6-6Z"
+        fill={`url(#${gradientId}-file)`}
+        stroke={art.primary}
+        strokeOpacity="0.42"
+        strokeWidth="2"
+      />
+      <path d="M57 8v15h15" fill={art.soft} stroke={art.primary} strokeOpacity="0.38" strokeWidth="2" />
+      <rect x="18" y="55" width="50" height="16" rx="7" fill={`url(#${gradientId}-badge)`} />
+      <text
+        x="43"
+        y="66"
+        fill="#fff"
+        fontFamily="Inter, PingFang SC, sans-serif"
+        fontSize="11"
+        fontWeight="900"
+        letterSpacing="0"
+        textAnchor="middle"
+      >
+        {title}
+      </text>
+
+      {isImage ? (
+        <>
+          <circle cx="54" cy="25" r="4" fill={art.secondary} />
+          <path d="M18 46 30 32l9 8 7-6 13 12H18Z" fill={art.primary} opacity="0.9" />
+        </>
+      ) : isSheet ? (
+        <g fill="none" stroke={art.primary} strokeLinecap="round" strokeWidth="3">
+          <path d="M20 24h34" />
+          <path d="M20 36h34" />
+          <path d="M31 18v30" />
+          <path d="M44 18v30" />
+        </g>
+      ) : isWord ? (
+        <g stroke={art.primary} strokeLinecap="round" strokeWidth="4">
+          <path d="M20 24h32" />
+          <path d="M20 35h26" />
+          <path d="M20 46h34" />
+        </g>
+      ) : (
+        <g fill="none" stroke={art.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth="4">
+          <path d="M20 46h30" />
+          <path d="M20 32h34" />
+          <path d="M20 22h24" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
+function MiniBinArt({ type, label }) {
+  const art = TYPE_ART[type] ?? TYPE_ART.pdf;
+  const gradientId = React.useId().replace(/:/g, '');
+
+  return (
+    <svg
+      aria-label={label}
+      className="niuma-game__bin-art"
+      viewBox="0 0 100 76"
+      role="img"
+    >
+      <defs>
+        <linearGradient id={`${gradientId}-body`} x1="18" x2="82" y1="22" y2="72" gradientUnits="userSpaceOnUse">
+          <stop stopColor={art.secondary} />
+          <stop offset="1" stopColor={art.primary} />
+        </linearGradient>
+        <linearGradient id={`${gradientId}-rim`} x1="16" x2="84" y1="13" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor={art.secondary} />
+          <stop offset="1" stopColor={art.primary} />
+        </linearGradient>
+      </defs>
+      <path
+        d="M18 27h64l-6 36a9 9 0 0 1-9 8H33a9 9 0 0 1-9-8L18 27Z"
+        fill={`url(#${gradientId}-body)`}
+      />
+      <path
+        d="M15 25c0-8 15-15 35-15s35 7 35 15-15 15-35 15-35-7-35-15Z"
+        fill={`url(#${gradientId}-rim)`}
+      />
+      <ellipse cx="50" cy="23.5" rx="27" ry="8.5" fill="#ffffff" fillOpacity="0.64" />
+      <ellipse cx="50" cy="25" rx="21" ry="5.6" fill={art.deep} fillOpacity="0.22" />
+      <path d="M22 28c5 6 16 10 28 10s23-4 28-10" fill="none" stroke="#fff" strokeOpacity="0.44" strokeWidth="3" strokeLinecap="round" />
+      <rect x="25" y="43" width="50" height="21" rx="8" fill="#fff" fillOpacity="0.94" />
+      <text
+        x="50"
+        y="58"
+        fill={art.deep}
+        fontFamily="Inter, PingFang SC, sans-serif"
+        fontSize="16"
+        fontWeight="950"
+        letterSpacing="0"
+        textAnchor="middle"
+      >
+        {art.bucketLabel}
+      </text>
+    </svg>
+  );
 }
 
 function MiniFile({ file, dragging = false }) {
@@ -135,13 +291,15 @@ function MiniFile({ file, dragging = false }) {
     <button
       ref={setNodeRef}
       aria-label={file.label}
-      className={`niuma-file-chip ${file.status === 'exiting' ? 'is-exiting' : ''}`}
+      className={`niuma-file-chip ${file.status === 'exiting' ? 'is-exiting' : ''} ${
+        isDragging ? 'is-dragging' : ''
+      }`}
       style={style}
       type="button"
       {...listeners}
       {...attributes}
     >
-      <img alt="" src={file.icon} />
+      <MiniFileArt label={file.label} type={file.type} />
     </button>
   );
 }
@@ -163,14 +321,13 @@ function BinTarget({ box, onRegister, tone }) {
         tone ? `is-${tone}` : ''
       }`}
     >
-      <img alt={box.label} src={box.image} />
+      <MiniBinArt label={box.label} type={box.type} />
     </div>
   );
 }
 
 export default function MiniGame({
   initialTime = DEFAULT_TIME,
-  targetScore = DEFAULT_TARGET_SCORE,
   onFinish
 }) {
   const [game, setGame] = React.useState(() => createInitialGame(initialTime));
@@ -187,7 +344,6 @@ export default function MiniGame({
     [game.activeId, game.files]
   );
 
-  const remainingToWin = Math.max(0, Math.ceil((targetScore - game.score) / 10));
   const countdownLabel = `00:${String(game.timeLeft).padStart(2, '0')}`;
 
   React.useEffect(() => {
@@ -247,29 +403,6 @@ export default function MiniGame({
 
     return () => window.clearTimeout(replenishTimer);
   }, [game.files.length, game.status]);
-
-  React.useEffect(() => {
-    if (game.status !== 'playing' || game.score < targetScore) {
-      return;
-    }
-
-    setGame((current) => {
-      if (current.status !== 'playing' || current.score < targetScore) {
-        return current;
-      }
-
-      return {
-        ...current,
-        status: 'finished',
-        resultOpen: true,
-        resultTitle: '通关成功',
-        resultText: miniGameTips.win,
-        tip: miniGameTips.win,
-        activeId: null,
-        hoverBin: null
-      };
-    });
-  }, [game.score, game.status, targetScore]);
 
   React.useEffect(() => {
     if (game.status !== 'finished' || finishSentRef.current) {
@@ -340,11 +473,32 @@ export default function MiniGame({
       hoverBin: null,
       feedbackBin: null,
       feedbackKind: null,
-      tip: formatTip(miniGameTips.progress, Math.ceil(targetScore / 10)),
+      tip: miniGameTips.progress,
       resultText: '',
       resultTitle: '',
       resultOpen: false
     });
+  }
+
+  function pauseOrResumeGame() {
+    setGame((current) => {
+      if (current.status === 'playing') {
+        return { ...current, status: 'paused', activeId: null, hoverBin: null };
+      }
+      if (current.status === 'paused') {
+        return { ...current, status: 'playing' };
+      }
+      return current;
+    });
+  }
+
+  function cancelGame() {
+    finishSentRef.current = false;
+    setGame(createInitialGame(initialTime));
+  }
+
+  function closeResult() {
+    setGame((current) => ({ ...current, resultOpen: false }));
   }
 
   function removeFileWithAnimation(fileId, nextScore, nextTip) {
@@ -413,25 +567,18 @@ export default function MiniGame({
 
     if (file.type === binId) {
       const nextScore = game.score + 10;
-      const nextTip =
-        nextScore >= targetScore
-          ? miniGameTips.win
-          : remainingToWin <= 1
-            ? miniGameTips.cleared
-            : formatTip(miniGameTips.progress, Math.max(0, remainingToWin - 1));
 
       setGame((current) => ({
         ...current,
         feedbackBin: binId,
         feedbackKind: 'success'
       }));
-      removeFileWithAnimation(fileId, nextScore, nextTip);
+      removeFileWithAnimation(fileId, nextScore, miniGameTips.success);
       clearFeedbackSoon();
       return;
     }
 
     const nextScore = Math.max(0, game.score - 5);
-    const isMystery = file.type === 'unknown';
 
     setGame((current) => ({
       ...current,
@@ -440,105 +587,138 @@ export default function MiniGame({
       hoverBin: null,
       feedbackBin: binId,
       feedbackKind: 'error',
-      tip: isMystery ? miniGameTips.mystery : miniGameTips.error
+      tip: miniGameTips.error
     }));
     clearFeedbackSoon();
   }
 
   return (
-    <div className="niuma-widget niuma-widget--game">
+    <div className={`niuma-widget niuma-widget--game ${game.resultOpen ? 'has-result-open' : ''}`}>
       <div className="niuma-widget__header">
         <div className="niuma-widget__title">
-          <span>📂</span>
+          <FolderOpen aria-hidden="true" size={16} />
           <span>文件整理</span>
         </div>
         <div className="niuma-game__header-tools">
-          {game.status === 'playing' && (
-            <div className={`niuma-game__timer ${game.timeLeft <= 5 ? 'is-urgent' : ''}`}>
-              <Clock3 aria-hidden="true" size={12} />
-              <span>{countdownLabel}</span>
-            </div>
+          <div className={`niuma-game__timer ${game.status === 'playing' && game.timeLeft <= 5 ? 'is-urgent' : ''}`}>
+            <Clock3 aria-hidden="true" size={12} />
+            <span>{countdownLabel}</span>
+          </div>
+          {game.status === 'playing' || game.status === 'paused' ? (
+            <>
+              <button
+                className="niuma-home__primary-pill niuma-game__start-btn"
+                type="button"
+                onClick={beginGame}
+              >
+                <RotateCcw aria-hidden="true" size={14} />
+                <span>重来</span>
+              </button>
+              <button
+                className="niuma-home__ghost-pill niuma-game__ctrl-btn"
+                type="button"
+                onClick={pauseOrResumeGame}
+              >
+                {game.status === 'playing' ? <Pause aria-hidden="true" size={14} /> : <Play aria-hidden="true" size={14} />}
+                <span>{game.status === 'playing' ? '暂停' : '继续'}</span>
+              </button>
+              <button
+                className="niuma-home__ghost-pill niuma-game__ctrl-btn is-danger"
+                type="button"
+                onClick={cancelGame}
+              >
+                <Ban aria-hidden="true" size={14} />
+                <span>取消</span>
+              </button>
+            </>
+          ) : (
+            <button className="niuma-home__primary-pill niuma-game__start-btn" type="button" onClick={beginGame}>
+              {game.status === 'idle' ? <Play aria-hidden="true" size={14} /> : <RotateCcw aria-hidden="true" size={14} />}
+              <span>{game.status === 'idle' ? '开始' : '重来'}</span>
+            </button>
           )}
-          <button className="niuma-home__primary-pill niuma-game__start-btn" type="button" onClick={beginGame}>
-            {game.status === 'idle' ? <Play aria-hidden="true" size={14} /> : <RotateCcw aria-hidden="true" size={14} />}
-            <span>{game.status === 'idle' ? '开始' : '重来'}</span>
-          </button>
         </div>
       </div>
 
-      <DndContext
-        collisionDetection={closestCenter}
-        measuring={{
-          droppable: {
-            strategy: MeasuringStrategy.Always
-          }
-        }}
-        sensors={sensors}
-        onDragCancel={handleDragCancel}
-        onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
-        onDragStart={handleDragStart}
-      >
-        <div className={`niuma-game__playground ${game.status !== 'playing' ? 'is-idle' : ''}`}>
-          <div className="niuma-game__files">
-            {game.files.map((file) => (
-              <MiniFile
-                dragging={game.status !== 'playing'}
-                file={file}
-                key={file.id}
-              />
-            ))}
-            {game.status === 'idle' ? (
-              <div className="niuma-game__bubble is-idle">
-                点击开始，把文件拖到对应箱子里
-              </div>
-            ) : game.feedbackKind ? (
-              <div
-                className={`niuma-game__bubble ${
-                  game.feedbackKind === 'error'
-                    ? 'is-error'
-                    : game.feedbackKind === 'success'
-                      ? 'is-success'
-                      : ''
-                }`}
-              >
-                {game.feedbackKind === 'success' ? '✓ 正确！' : '✗ 放错了'}
+      <div className="niuma-game__body">
+        <DndContext
+          collisionDetection={pointerWithin}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always
+            }
+          }}
+          sensors={sensors}
+          onDragCancel={handleDragCancel}
+          onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+          onDragStart={handleDragStart}
+        >
+          <div className={`niuma-game__playground ${game.status !== 'playing' ? 'is-idle' : ''}`}>
+            <div className="niuma-game__files">
+              {game.files.map((file) => (
+                <MiniFile
+                  dragging={game.status !== 'playing'}
+                  file={file}
+                  key={file.id}
+                />
+              ))}
+              {game.feedbackKind ? (
+                <div
+                  className={`niuma-game__bubble ${
+                    game.feedbackKind === 'error'
+                      ? 'is-error'
+                      : game.feedbackKind === 'success'
+                        ? 'is-success'
+                        : ''
+                  }`}
+                >
+                  {game.feedbackKind === 'success' ? '✓ 正确！' : '✗ 放错了'}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="niuma-game__bins">
+              {miniGameBoxes.map((box) => {
+                const tone =
+                  game.feedbackBin === box.type ? game.feedbackKind : game.hoverBin === box.type ? 'hover' : '';
+
+                return <BinTarget box={box} key={box.type} onRegister={registerBinRef} tone={tone} />;
+              })}
+            </div>
+          </div>
+
+          <DragOverlay dropAnimation={null}>
+            {activeFile ? (
+              <div className="niuma-file-chip niuma-file-chip--overlay">
+                <MiniFileArt label={activeFile.label} type={activeFile.type} />
               </div>
             ) : null}
+          </DragOverlay>
+        </DndContext>
+
+        <div className="niuma-game__footer">
+          <div className="niuma-game__footer-copy">
+            <p>
+              得分：<strong>{game.score}</strong>
+            </p>
+            {(game.status === 'playing' || game.status === 'paused') && (
+              <p className="niuma-widget__subcopy">{game.tip}</p>
+            )}
           </div>
-
-          <div className="niuma-game__bins">
-            {miniGameBoxes.map((box) => {
-              const tone =
-                game.feedbackBin === box.type ? game.feedbackKind : game.hoverBin === box.type ? 'hover' : '';
-
-              return <BinTarget box={box} key={box.type} onRegister={registerBinRef} tone={tone} />;
-            })}
-          </div>
-        </div>
-
-        <DragOverlay dropAnimation={null}>
-          {activeFile ? (
-            <div className="niuma-file-chip niuma-file-chip--overlay">
-              <img alt="" src={activeFile.icon} />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-
-      <div className="niuma-game__footer">
-        <div className="niuma-game__footer-copy">
-          <p>
-            得分：<strong>{game.score}</strong>
-          </p>
-          {game.status === 'playing' && (
-            <p className="niuma-widget__subcopy">还差 {remainingToWin} 个通关</p>
-          )}
         </div>
       </div>
 
       {game.resultOpen ? (
         <div className="niuma-game__result">
+          <button
+            aria-label="关闭结算"
+            className="niuma-game__result-close"
+            type="button"
+            onClick={closeResult}
+          >
+            <X aria-hidden="true" size={14} />
+          </button>
           <strong>{game.resultTitle || getResultCopy(game.score).title}</strong>
           <p>{game.resultText || getResultCopy(game.score).text}</p>
           <button className="niuma-home__ghost-pill" type="button" onClick={beginGame}>

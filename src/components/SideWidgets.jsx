@@ -11,6 +11,8 @@ import {
 import { cornerActions } from '../data/home';
 import MiniGame from './MiniGame';
 
+const SCRAMBLE_CHARS = '牛马百宝箱PDFDOCXLSPNG0123456789';
+
 function FortuneGauge({ score }) {
   return (
     <div
@@ -39,6 +41,15 @@ function CornerActionIcon({ icon }) {
   return <Heart aria-hidden="true" size={20} strokeWidth={2} />;
 }
 
+const coffeeFxBubbles = [
+  { x: '22%', size: 6, delay: 0, duration: 840, drift: -9, rise: 26 },
+  { x: '34%', size: 8, delay: 70, duration: 940, drift: -4, rise: 32 },
+  { x: '45%', size: 7, delay: 20, duration: 900, drift: 0, rise: 28 },
+  { x: '56%', size: 9, delay: 120, duration: 1020, drift: 5, rise: 34 },
+  { x: '68%', size: 7, delay: 90, duration: 930, drift: 8, rise: 30 },
+  { x: '79%', size: 6, delay: 160, duration: 860, drift: 11, rise: 25 }
+];
+
 export default function SideWidgets({
   collapsed,
   quote,
@@ -50,7 +61,56 @@ export default function SideWidgets({
 }) {
   const shellRef = useRef(null);
   const contentRef = useRef(null);
+  const scrambleTimerRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const [coffeeFxToken, setCoffeeFxToken] = useState(0);
+  const [encourageFxToken, setEncourageFxToken] = useState(0);
+  const [displayQuote, setDisplayQuote] = useState('');
+
+  useEffect(() => {
+    if (scrambleTimerRef.current) {
+      window.clearInterval(scrambleTimerRef.current);
+    }
+
+    let frame = 0;
+    const source = quote || '';
+    const totalFrames = Math.max(source.length * 2, 8);
+
+    function getRandomChar() {
+      return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+    }
+
+    scrambleTimerRef.current = window.setInterval(() => {
+      frame += 1;
+      const progress = Math.min(1, frame / totalFrames);
+      const resolvedCount = Math.floor(progress * source.length);
+
+      const nextText = source
+        .split('')
+        .map((char, index) => {
+          if (index < resolvedCount || /\s|[，。、“”！？,.!~:：;；'"、】【《》]/.test(char)) {
+            return char;
+          }
+          return getRandomChar();
+        })
+        .join('');
+
+      setDisplayQuote(nextText);
+
+      if (frame >= totalFrames) {
+        window.clearInterval(scrambleTimerRef.current);
+        scrambleTimerRef.current = null;
+        setDisplayQuote(source);
+      }
+    }, 14);
+
+    return () => {
+      if (scrambleTimerRef.current) {
+        window.clearInterval(scrambleTimerRef.current);
+        scrambleTimerRef.current = null;
+      }
+    };
+  }, [quote]);
 
   useEffect(() => {
     function updateScale() {
@@ -98,6 +158,19 @@ export default function SideWidgets({
         }
       : undefined;
 
+  function handleQuickAction(actionKey) {
+    onAction(actionKey);
+
+    if (actionKey === 'coffee') {
+      setCoffeeFxToken(Date.now());
+      return;
+    }
+
+    if (actionKey === 'encourage') {
+      setEncourageFxToken(Date.now());
+    }
+  }
+
   return (
     <div className="niuma-side-widgets" ref={shellRef}>
       <div className="niuma-side-widgets__content" ref={contentRef} style={scaledStyle}>
@@ -107,14 +180,14 @@ export default function SideWidgets({
               <Sparkles aria-hidden="true" size={16} />
               <span>小牛摸鱼角</span>
             </div>
-            <button className="niuma-widget__text-btn" type="button" onClick={onToggleCollapsed}>
+            {/* <button className="niuma-widget__text-btn" type="button" onClick={onToggleCollapsed}>
               {collapsed ? '展开' : '收起'}
               <ChevronUp
                 aria-hidden="true"
                 className={collapsed ? 'is-collapsed' : ''}
                 size={16}
               />
-            </button>
+            </button> */}
           </div>
 
           {!collapsed ? (
@@ -132,7 +205,7 @@ export default function SideWidgets({
                       换一句
                     </button>
                   </div>
-                  <p>“{quote}”</p>
+                  <p>“{displayQuote || quote}”</p>
                 </div>
               </div>
 
@@ -143,10 +216,45 @@ export default function SideWidgets({
                       key={action.key}
                       className={`niuma-widget__quick-action niuma-widget__quick-action--${action.key}`}
                       type="button"
-                      onClick={() => onAction(action.key)}
+                      onClick={() => handleQuickAction(action.key)}
                     >
                       <CornerActionIcon icon={action.icon} />
                       <span>{action.label}</span>
+                      {action.key === 'coffee' && coffeeFxToken ? (
+                        <span
+                          aria-hidden="true"
+                          className="niuma-widget__quick-fx niuma-widget__quick-fx--coffee"
+                          key={`coffee-${coffeeFxToken}`}
+                        >
+                          {coffeeFxBubbles.map((bubble, index) => (
+                            <i
+                              key={`${coffeeFxToken}-${index}`}
+                              style={{
+                                '--bubble-x': bubble.x,
+                                '--bubble-size': `${bubble.size}px`,
+                                '--bubble-delay': `${bubble.delay}ms`,
+                                '--bubble-duration': `${bubble.duration}ms`,
+                                '--bubble-drift': `${bubble.drift}px`,
+                                '--bubble-rise': `${bubble.rise}px`
+                              }}
+                            />
+                          ))}
+                        </span>
+                      ) : null}
+                      {action.key === 'encourage' && encourageFxToken ? (
+                        <span
+                          aria-hidden="true"
+                          className="niuma-widget__quick-fx niuma-widget__quick-fx--encourage"
+                          key={`encourage-${encourageFxToken}`}
+                        >
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}

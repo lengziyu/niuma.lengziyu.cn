@@ -60,7 +60,7 @@ export const tools = [
         label: '尺寸预设',
         type: 'select',
         options: ['公众号封面 900×383', '工牌照 358×441', '自定义尺寸'],
-        defaultValue: '公众号封面 900×383'
+        defaultValue: '自定义尺寸'
       },
       {
         id: 'fit',

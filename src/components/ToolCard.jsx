@@ -4,6 +4,7 @@ import { ToolIcon } from './ToolIllustration';
 
 export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
   const navigate = useNavigate();
+  const quickTags = tool.keywords?.slice(0, 2) ?? [];
 
   function handleCardClick(e) {
     // Don't navigate if clicking the favorite button
@@ -26,6 +27,7 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
         </div>
         <button
           aria-label={isFavorite ? `取消收藏 ${tool.name}` : `收藏 ${tool.name}`}
+          aria-pressed={isFavorite}
           className={`niuma-tool-card__fav ${isFavorite ? 'is-active' : ''}`}
           type="button"
           onClick={(e) => {
@@ -38,6 +40,14 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
       </div>
 
       <p className="niuma-tool-card__description">{tool.description}</p>
+
+      {quickTags.length ? (
+        <div className="niuma-tool-card__tags" aria-label="常用关键词">
+          {quickTags.map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="niuma-tool-card__bottom">
         <div

@@ -1,9 +1,10 @@
 import {
-  useDeferredValue,
   useEffect,
   useMemo,
   useState
 } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck,
   Sparkles,
@@ -14,11 +15,11 @@ import Header from '../components/Header';
 import Hero from '../components/Hero';
 import SideWidgets from '../components/SideWidgets';
 import ToolCard from '../components/ToolCard';
+import useFavoriteIds from '../hooks/useFavoriteIds';
 import {
   featureItems,
   getHomeToolCatalog,
-  headerNavItems,
-  matchesToolSearch
+  headerNavItems
 } from '../data/home';
 import { homeQuotes, officeFortunes } from '../data/quotes';
 
@@ -49,6 +50,7 @@ function FeatureIcon({ icon }) {
 }
 
 export default function HomePage({ theme, setTheme }) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('recommended');
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -57,19 +59,9 @@ export default function HomePage({ theme, setTheme }) {
   const [quoteCollapsed, setQuoteCollapsed] = useState(false);
   const [relaxOpen, setRelaxOpen] = useState(false);
   const [relaxCountdown, setRelaxCountdown] = useState(10);
-  const [favoriteIds, setFavoriteIds] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem('niuma-home-favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const deferredSearch = useDeferredValue(searchQuery.trim());
+  const { favoriteSet, setFavoriteIds } = useFavoriteIds();
 
   const catalog = useMemo(() => getHomeToolCatalog(), []);
-  const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
 
   const visibleTools = useMemo(() => {
     let list =
@@ -81,14 +73,11 @@ export default function HomePage({ theme, setTheme }) {
       list = list.filter((tool) => favoriteSet.has(tool.id));
     }
 
-    return list.filter((tool) => matchesToolSearch(tool, deferredSearch));
-  }, [activeTab, catalog, deferredSearch, favoriteSet, favoritesOnly]);
+    return list;
+  }, [activeTab, catalog, favoriteSet, favoritesOnly]);
+  const homeTools = visibleTools.slice(0, 4);
 
   const activeNavKey = 'home';
-
-  useEffect(() => {
-    window.localStorage.setItem('niuma-home-favorites', JSON.stringify(favoriteIds));
-  }, [favoriteIds]);
 
   useEffect(() => {
     const previousHtmlOverflow = document.documentElement.style.overflow;
@@ -140,8 +129,8 @@ export default function HomePage({ theme, setTheme }) {
   }
 
   function handleSearchSubmit() {
-    setActiveTab('all');
-    setFavoritesOnly(false);
+    const keyword = searchQuery.trim();
+    navigate(keyword ? `/tools?q=${encodeURIComponent(keyword)}` : '/tools');
   }
 
   function handleHeaderNav(key) {
@@ -171,121 +160,9 @@ export default function HomePage({ theme, setTheme }) {
     setFortuneIndex((current) => pickAnotherIndex(officeFortunes.length, current));
   }
 
-  return (
-    <div className="page page--niuma-home">
-      <div className="niuma-home">
-        <div className="niuma-home__bg niuma-home__bg--one" />
-        <div className="niuma-home__bg niuma-home__bg--two" />
-
-        <div className="niuma-home__shell">
-          <Header
-            activeKey={activeNavKey}
-            navItems={headerNavItems}
-            setTheme={setTheme}
-            theme={theme}
-            onNavClick={handleHeaderNav}
-          />
-
-          <main className="niuma-home__layout">
-            <div className="niuma-home__primary">
-              <Hero
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                onSearchSubmit={handleSearchSubmit}
-              />
-
-              <section className="niuma-home__section">
-                <div className="niuma-home__section-head">
-                  <div className="niuma-home__tabs" role="tablist" aria-label="工具分类">
-                    <button
-                      aria-selected={activeTab === 'recommended'}
-                      className={activeTab === 'recommended' ? 'is-active' : ''}
-                      role="tab"
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('recommended');
-                        setFavoritesOnly(false);
-                      }}
-                    >
-                      最热
-                    </button>
-                    <button
-                      aria-selected={activeTab === 'all'}
-                      className={activeTab === 'all' ? 'is-active' : ''}
-                      role="tab"
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('all');
-                        setFavoritesOnly(false);
-                      }}
-                    >
-                      最新
-                    </button>
-                  </div>
-
-                  <div className="niuma-home__section-meta">
-                    {favoritesOnly ? <span>当前显示：我的收藏</span> : null}
-                    <span>共 {visibleTools.length} 个工具</span>
-                  </div>
-                </div>
-
-                <div className="niuma-home__tool-grid">
-                  {visibleTools.length ? (
-                    visibleTools.map((tool) => (
-                      <ToolCard
-                        isFavorite={favoriteSet.has(tool.id)}
-                        key={tool.id}
-                        tool={tool}
-                        onToggleFavorite={toggleFavorite}
-                      />
-                    ))
-                  ) : (
-                    <div className="niuma-home__empty-state">
-                      <strong>暂时没有匹配的工具</strong>
-                      <p>换个关键词试试，比如“PDF”“图片”“二维码”。</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="niuma-home__features">
-                  {featureItems.map((item) => {
-                    return (
-                      <article className="niuma-home__feature" key={item.title}>
-                        <span className="niuma-home__feature-icon">
-                          <FeatureIcon icon={item.icon} />
-                        </span>
-                        <div>
-                          <h3>{item.title}</h3>
-                          <p>{item.description}</p>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
-
-            <aside className="niuma-home__sidebar">
-              <SideWidgets
-                collapsed={quoteCollapsed}
-                fortune={officeFortunes[fortuneIndex]}
-                quote={homeQuotes[quoteIndex]}
-                onAction={handleCornerAction}
-                onNextFortune={() =>
-                  setFortuneIndex((current) =>
-                    pickAnotherIndex(officeFortunes.length, current)
-                  )
-                }
-                onNextQuote={() =>
-                  setQuoteIndex((current) => pickAnotherIndex(homeQuotes.length, current))
-                }
-                onToggleCollapsed={() => setQuoteCollapsed((current) => !current)}
-              />
-            </aside>
-          </main>
-        </div>
-
-        {relaxOpen ? (
+  const relaxModal =
+    relaxOpen && typeof document !== 'undefined'
+      ? createPortal(
           <div
             aria-modal="true"
             className="niuma-home__modal"
@@ -318,8 +195,136 @@ export default function HomePage({ theme, setTheme }) {
                 {relaxCountdown > 0 ? '提前结束' : '返回首页'}
               </button>
             </div>
-          </div>
-        ) : null}
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <div className="page page--niuma-home">
+      <div className="niuma-home">
+        <div className="niuma-home__bg niuma-home__bg--one" />
+        <div className="niuma-home__bg niuma-home__bg--two" />
+
+        <div className="niuma-home__shell">
+          <Header
+            activeKey={activeNavKey}
+            navItems={headerNavItems}
+            setTheme={setTheme}
+            theme={theme}
+            onNavClick={handleHeaderNav}
+          />
+
+          <main className="niuma-home__layout">
+            <div className="niuma-home__primary">
+              <Hero
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSearchSubmit={handleSearchSubmit}
+              />
+
+              <section className="niuma-home__section">
+                <div className="niuma-home__tools-module">
+                  <div className="niuma-home__section-head">
+                    <div className="niuma-home__tabs" role="tablist" aria-label="工具分类">
+                      <button
+                        aria-selected={activeTab === 'recommended'}
+                        className={activeTab === 'recommended' ? 'is-active' : ''}
+                        role="tab"
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('recommended');
+                          setFavoritesOnly(false);
+                        }}
+                      >
+                        最热
+                      </button>
+                      <button
+                        aria-selected={activeTab === 'all'}
+                        className={activeTab === 'all' ? 'is-active' : ''}
+                        role="tab"
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('all');
+                          setFavoritesOnly(false);
+                        }}
+                      >
+                        最新
+                      </button>
+                    </div>
+
+                    <div className="niuma-home__section-meta">
+                      {favoritesOnly ? <span>当前显示：我的收藏</span> : null}
+                      <button
+                        className="niuma-home__meta-link"
+                        type="button"
+                        onClick={() => navigate('/tools')}
+                      >
+                        更多工具
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="niuma-home__tool-grid">
+                    {homeTools.length ? (
+                      homeTools.map((tool) => (
+                        <ToolCard
+                          isFavorite={favoriteSet.has(tool.id)}
+                          key={tool.id}
+                          tool={tool}
+                          onToggleFavorite={toggleFavorite}
+                        />
+                      ))
+                    ) : (
+                      <div className="niuma-home__empty-state">
+                        <strong>暂时没有匹配的工具</strong>
+                        <p>换个关键词试试，比如“PDF”“图片”“二维码”。</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="niuma-home__features-module">
+                  <div className="niuma-home__features">
+                    {featureItems.map((item) => {
+                      return (
+                        <article className="niuma-home__feature" key={item.title}>
+                          <span className="niuma-home__feature-icon">
+                            <FeatureIcon icon={item.icon} />
+                          </span>
+                          <div>
+                            <h3>{item.title}</h3>
+                            <p>{item.description}</p>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside className="niuma-home__sidebar">
+              <SideWidgets
+                collapsed={quoteCollapsed}
+                fortune={officeFortunes[fortuneIndex]}
+                quote={homeQuotes[quoteIndex]}
+                onAction={handleCornerAction}
+                onNextFortune={() =>
+                  setFortuneIndex((current) =>
+                    pickAnotherIndex(officeFortunes.length, current)
+                  )
+                }
+                onNextQuote={() =>
+                  setQuoteIndex((current) => pickAnotherIndex(homeQuotes.length, current))
+                }
+                onToggleCollapsed={() => setQuoteCollapsed((current) => !current)}
+              />
+            </aside>
+          </main>
+        </div>
+
+        {relaxModal}
       </div>
     </div>
   );

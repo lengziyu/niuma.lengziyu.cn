@@ -33,28 +33,25 @@ export const cornerActions = [
 ];
 
 export const miniGameBoxes = [
-  { type: 'pdf', label: 'PDF文档', image: '/images/sprites/game-bin-pdf.png' },
-  { type: 'word', label: 'Word文档', image: '/images/sprites/game-bin-word.png' },
-  { type: 'image', label: '图片文件', image: '/images/sprites/game-bin-image.png' },
-  { type: 'sheet', label: '表格文件', image: '/images/sprites/game-bin-sheet.png' }
+  { type: 'pdf', label: 'PDF文档' },
+  { type: 'image', label: 'PNG图片' },
+  { type: 'word', label: 'DOC文档' },
+  { type: 'sheet', label: 'XLS表格' }
 ];
 
 export const miniGameFilePool = [
-  { type: 'pdf', label: 'PDF', image: '/images/sprites/game-file-pdf.png' },
-  { type: 'word', label: 'WORD', image: '/images/sprites/game-file-word.png' },
-  { type: 'image', label: 'PNG', image: '/images/sprites/game-file-image.png' },
-  { type: 'sheet', label: 'XLS', image: '/images/sprites/game-file-sheet.png' },
-  { type: 'unknown', label: '?', image: '/images/sprites/game-file-unknown.png' }
+  { type: 'pdf', label: 'PDF' },
+  { type: 'image', label: 'PNG' },
+  { type: 'word', label: 'DOC' },
+  { type: 'sheet', label: 'XLS' }
 ];
 
 export const miniGameTips = {
-  idle: '点开始试试，把文件拖回正确的箱子里。',
-  progress: '加油！再分对 {count} 个就能通关啦！',
+  idle: '拖拽文件到正确箱子里。',
+  progress: '拖到正确箱子里。',
   success: '文件终于找到家啦！',
   error: '哎呀，放错箱子啦～',
-  mystery: '这个文件太神秘啦。',
-  cleared: '这一轮整理得很顺，继续保持！',
-  win: '通关成功，今天的文件都被你拿捏住了！'
+  finished: '整理好了，继续加油鸭！'
 };
 
 const recommendedToolIds = ['image-compress', 'pdf-to-word', 'word-to-pdf', 'qr-generator'];
