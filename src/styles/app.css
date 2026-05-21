@@ -56,6 +56,8 @@
 .page--niuma-home-1920 .niuma-home__shell {
   width: 100%;
   max-width: 100%;
+  padding-top: 12px;
+  padding-bottom: 24px;
   padding-left: 16px;
   padding-right: 16px;
 }
@@ -68,9 +70,28 @@
   max-width: 560px;
 }
 
+@media (min-width: 1181px) {
+  .page--niuma-home-1920 .niuma-home__sidebar {
+    margin-top: 0;
+  }
+
+  .page--niuma-home-1920 .niuma-home__hero-card {
+    min-height: clamp(360px, 40vh, 500px);
+  }
+
+  .page--niuma-home-1920 .niuma-tool-card {
+    min-height: 192px;
+  }
+
+  .page--niuma-home-1920 .niuma-home__feature {
+    min-height: 104px;
+  }
+}
+
 @media (min-width: 1920px) {
   .page--niuma-home-1920 .niuma-home__layout {
     grid-template-columns: minmax(0, 2.15fr) minmax(340px, 0.85fr);
+    margin-top: 10px;
   }
 
   .page--niuma-home-1920 .niuma-home__hero-figure {

@@ -119,6 +119,11 @@ export default function SideWidgets({
       const shell = shellRef.current;
       const content = contentRef.current;
 
+      if (layoutMode === 'full1920') {
+        setScale(1);
+        return;
+      }
+
       if (!shell || !content || window.innerWidth <= 1180) {
         setScale(1);
         return;
@@ -150,7 +155,7 @@ export default function SideWidgets({
       observer.disconnect();
       window.removeEventListener('resize', updateScale);
     };
-  }, [collapsed, fortune, quote]);
+  }, [collapsed, fortune, quote, layoutMode]);
 
   const scaledStyle =
     scale < 0.999
@@ -170,17 +175,37 @@ export default function SideWidgets({
       }
 
       const content = contentRef.current;
-      const leftBottomBlock = document.querySelector('.niuma-home__features-module');
       const gameWidget = content?.querySelector('.niuma-widget--game');
 
-      if (!content || !leftBottomBlock || !gameWidget) {
+      if (!content || !gameWidget) {
         setGameHeight(null);
         return;
       }
 
-      const targetHeight = Math.round(
-        leftBottomBlock.getBoundingClientRect().bottom - gameWidget.getBoundingClientRect().top
-      );
+      let targetHeight = 0;
+      if (layoutMode === 'full1920') {
+        const shell = shellRef.current;
+
+        if (!shell) {
+          setGameHeight(null);
+          return;
+        }
+
+        const shellRect = shell.getBoundingClientRect();
+        targetHeight = Math.round(shellRect.bottom - gameWidget.getBoundingClientRect().top);
+      } else {
+        const leftBottomBlock = document.querySelector('.niuma-home__features-module');
+
+        if (!leftBottomBlock) {
+          setGameHeight(null);
+          return;
+        }
+
+        targetHeight = Math.round(
+          leftBottomBlock.getBoundingClientRect().bottom - gameWidget.getBoundingClientRect().top
+        );
+      }
+
       const minHeight = layoutMode === 'full1920' ? 280 : 220;
       const maxHeight = layoutMode === 'full1920' ? 960 : 640;
       const clampedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
@@ -203,9 +228,11 @@ export default function SideWidgets({
       observer.observe(contentRef.current);
     }
 
-    const leftBottomBlock = document.querySelector('.niuma-home__features-module');
-    if (leftBottomBlock) {
-      observer.observe(leftBottomBlock);
+    if (layoutMode !== 'full1920') {
+      const leftBottomBlock = document.querySelector('.niuma-home__features-module');
+      if (leftBottomBlock) {
+        observer.observe(leftBottomBlock);
+      }
     }
 
     window.addEventListener('resize', scheduleSync);
