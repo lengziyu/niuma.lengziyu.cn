@@ -295,6 +295,7 @@ export default function HomePage1920({ theme, setTheme }) {
               <SideWidgets
                 collapsed={quoteCollapsed}
                 fortune={officeFortunes[fortuneIndex]}
+                layoutMode="full1920"
                 quote={homeQuotes[quoteIndex]}
                 onAction={handleCornerAction}
                 onNextFortune={() =>

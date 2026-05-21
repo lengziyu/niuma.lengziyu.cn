@@ -57,7 +57,8 @@ export default function SideWidgets({
   onToggleCollapsed,
   onNextQuote,
   onNextFortune,
-  onAction
+  onAction,
+  layoutMode = 'default'
 }) {
   const shellRef = useRef(null);
   const contentRef = useRef(null);
@@ -180,7 +181,9 @@ export default function SideWidgets({
       const targetHeight = Math.round(
         leftBottomBlock.getBoundingClientRect().bottom - gameWidget.getBoundingClientRect().top
       );
-      const clampedHeight = Math.max(220, Math.min(640, targetHeight));
+      const minHeight = layoutMode === 'full1920' ? 280 : 220;
+      const maxHeight = layoutMode === 'full1920' ? 960 : 640;
+      const clampedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
 
       setGameHeight((current) => (current === clampedHeight ? current : clampedHeight));
     }
@@ -214,7 +217,7 @@ export default function SideWidgets({
       observer.disconnect();
       window.removeEventListener('resize', scheduleSync);
     };
-  }, [collapsed, fortune, quote, scale]);
+  }, [collapsed, fortune, quote, scale, layoutMode]);
 
   function handleQuickAction(actionKey) {
     onAction(actionKey);
