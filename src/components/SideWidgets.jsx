@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { animate } from 'animejs';
 import {
   Coffee,
   ChevronUp,
@@ -14,15 +15,206 @@ import MiniGame from './MiniGame';
 const SCRAMBLE_CHARS = '牛马百宝箱PDFDOCXLSPNG0123456789';
 
 function FortuneGauge({ score }) {
+  const canvasRef = useRef(null);
+  const progressRef = useRef(null);
+  const scoreRef = useRef(null);
+  const gaugeRef = useRef(null);
+  const scoreValueRef = useRef(score);
+  const circumference = 2 * Math.PI * 36;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const gauge = gaugeRef.current;
+
+    if (!canvas || !gauge) {
+      return undefined;
+    }
+
+    let cleanupScene = () => {};
+    let disposed = false;
+
+    async function setupScene() {
+      const THREE = await import('three');
+
+      if (disposed) {
+        return;
+      }
+
+      const renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        canvas
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0x000000, 0);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+      camera.position.z = 4;
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(0.86, 0.08, 20, 96),
+        new THREE.MeshBasicMaterial({
+          color: 0x8aa8ff,
+          opacity: 0.24,
+          transparent: true
+        })
+      );
+      const innerHalo = new THREE.Mesh(
+        new THREE.TorusGeometry(0.58, 0.025, 14, 80),
+        new THREE.MeshBasicMaterial({
+          color: 0x9b7cff,
+          opacity: 0.18,
+          transparent: true
+        })
+      );
+      const spark = new THREE.Mesh(
+        new THREE.CircleGeometry(0.06, 24),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          opacity: 0.4,
+          transparent: true
+        })
+      );
+      spark.position.set(0.58, -0.24, 0);
+
+      group.add(halo, innerHalo, spark);
+
+      function applyThemeColors() {
+        const style = getComputedStyle(gauge);
+        halo.material.color.set(style.getPropertyValue('--fortune-three-primary').trim() || '#6f95ff');
+        innerHalo.material.color.set(style.getPropertyValue('--fortune-three-secondary').trim() || '#9b7cff');
+        spark.material.color.set(style.getPropertyValue('--fortune-three-spark').trim() || '#ffffff');
+      }
+
+      function resize() {
+        const size = Math.max(1, Math.round(gauge.getBoundingClientRect().width));
+        renderer.setSize(size, size, false);
+        camera.aspect = 1;
+        camera.updateProjectionMatrix();
+        renderer.render(scene, camera);
+      }
+
+      let rafId = 0;
+      const start = performance.now();
+
+      function renderFrame(now) {
+        const elapsed = (now - start) / 1000;
+        group.rotation.z = elapsed * 0.22;
+        innerHalo.rotation.z = -elapsed * 0.38;
+        halo.material.opacity = 0.2 + Math.sin(elapsed * 1.6) * 0.035;
+        innerHalo.material.opacity = 0.14 + Math.cos(elapsed * 1.4) * 0.03;
+        spark.material.opacity = 0.26 + Math.sin(elapsed * 2.1) * 0.1;
+        renderer.render(scene, camera);
+        rafId = window.requestAnimationFrame(renderFrame);
+      }
+
+      applyThemeColors();
+      resize();
+      rafId = window.requestAnimationFrame(renderFrame);
+
+      const resizeObserver = new ResizeObserver(resize);
+      resizeObserver.observe(gauge);
+      const themeObserver = new MutationObserver(applyThemeColors);
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+
+      cleanupScene = () => {
+        window.cancelAnimationFrame(rafId);
+        resizeObserver.disconnect();
+        themeObserver.disconnect();
+        halo.geometry.dispose();
+        halo.material.dispose();
+        innerHalo.geometry.dispose();
+        innerHalo.material.dispose();
+        spark.geometry.dispose();
+        spark.material.dispose();
+        renderer.dispose();
+      };
+    }
+
+    void setupScene();
+
+    return () => {
+      disposed = true;
+      cleanupScene();
+    };
+  }, []);
+
+  useEffect(() => {
+    const nextOffset = circumference * (1 - score / 100);
+    const animations = [];
+
+    if (progressRef.current) {
+      animations.push(
+        animate(progressRef.current, {
+          strokeDashoffset: nextOffset,
+          duration: 920,
+          ease: 'out(3)'
+        })
+      );
+    }
+
+    if (scoreRef.current) {
+      const counter = { value: scoreValueRef.current };
+      animations.push(
+        animate(counter, {
+          value: score,
+          duration: 820,
+          ease: 'out(3)',
+          onUpdate: () => {
+            if (scoreRef.current) {
+              scoreRef.current.textContent = String(Math.round(counter.value));
+            }
+          }
+        })
+      );
+      scoreValueRef.current = score;
+    }
+
+    if (gaugeRef.current) {
+      animations.push(
+        animate(gaugeRef.current, {
+          scale: [0.98, 1],
+          opacity: [0.88, 1],
+          duration: 780,
+          ease: 'out(3)'
+        })
+      );
+    }
+
+    return () => animations.forEach((animation) => animation.cancel?.());
+  }, [circumference, score]);
+
   return (
-    <div
-      className="niuma-fortune__gauge"
-      style={{
-        background: `conic-gradient(#5f8cff ${score * 3.6}deg, rgba(95, 140, 255, 0.12) 0deg)`
-      }}
-    >
-      <div>
-        <strong>{score}</strong>
+    <div className="niuma-fortune__gauge" ref={gaugeRef}>
+      <canvas aria-hidden="true" className="niuma-fortune__three" ref={canvasRef} />
+      <svg aria-hidden="true" className="niuma-fortune__ring" viewBox="0 0 88 88">
+        <defs>
+          <linearGradient id="fortune-ring-gradient" x1="10" x2="78" y1="10" y2="78">
+            <stop stopColor="var(--fortune-progress-a)" />
+            <stop offset="1" stopColor="var(--fortune-progress-b)" />
+          </linearGradient>
+        </defs>
+        <circle className="niuma-fortune__ring-track" cx="44" cy="44" r="36" />
+        <circle
+          className="niuma-fortune__ring-progress"
+          cx="44"
+          cy="44"
+          r="36"
+          ref={progressRef}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - score / 100)}
+        />
+        <circle className="niuma-fortune__ring-shine" cx="28" cy="22" r="2.4" />
+      </svg>
+      <div className="niuma-fortune__gauge-core">
+        <strong ref={scoreRef}>{score}</strong>
         <span>效率指数</span>
       </div>
     </div>

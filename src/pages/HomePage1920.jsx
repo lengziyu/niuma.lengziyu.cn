@@ -5,13 +5,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import {
-  ShieldCheck,
-  Sparkles,
-  X,
-  Zap
-} from 'lucide-react';
-import Header from '../components/Header';
+import { X } from 'lucide-react';
+import FeatureBadgeIcon from '../components/FeatureBadgeIcon';
 import Hero from '../components/Hero';
 import SideWidgets from '../components/SideWidgets';
 import ToolCard from '../components/ToolCard';
@@ -19,7 +14,7 @@ import useFavoriteIds from '../hooks/useFavoriteIds';
 import {
   featureItems,
   getHomeToolCatalog,
-  headerNavItems
+  heroHotTags
 } from '../data/home';
 import { homeQuotes, officeFortunes } from '../data/quotes';
 
@@ -37,19 +32,7 @@ function pickAnotherIndex(length, currentIndex) {
   return nextIndex;
 }
 
-function FeatureIcon({ icon }) {
-  if (icon === 'instant') {
-    return <Zap aria-hidden="true" size={18} />;
-  }
-
-  if (icon === 'local') {
-    return <ShieldCheck aria-hidden="true" size={18} />;
-  }
-
-  return <Sparkles aria-hidden="true" size={18} />;
-}
-
-export default function HomePage1920({ theme, setTheme }) {
+export default function HomePage1920() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('recommended');
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,8 +59,6 @@ export default function HomePage1920({ theme, setTheme }) {
     return list;
   }, [activeTab, catalog, favoriteSet, favoritesOnly]);
   const homeTools = visibleTools.slice(0, 4);
-
-  const activeNavKey = 'home';
 
   useEffect(() => {
     if (!relaxOpen || relaxCountdown <= 0) {
@@ -120,12 +101,9 @@ export default function HomePage1920({ theme, setTheme }) {
     navigate(keyword ? `/tools?q=${encodeURIComponent(keyword)}` : '/tools');
   }
 
-  function handleHeaderNav(key) {
-    if (key !== 'home') {
-      return;
-    }
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  function handleHotSearch(keyword) {
+    setSearchQuery(keyword);
+    navigate(`/tools?q=${encodeURIComponent(keyword)}`);
   }
 
   function openRelaxModal() {
@@ -194,17 +172,11 @@ export default function HomePage1920({ theme, setTheme }) {
         <div className="niuma-home__bg niuma-home__bg--two" />
 
         <div className="niuma-home__shell">
-          <Header
-            activeKey={activeNavKey}
-            navItems={headerNavItems}
-            setTheme={setTheme}
-            theme={theme}
-            onNavClick={handleHeaderNav}
-          />
-
           <main className="niuma-home__layout">
             <div className="niuma-home__primary">
               <Hero
+                hotTags={heroHotTags}
+                onHotSearch={handleHotSearch}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 onSearchSubmit={handleSearchSubmit}
@@ -275,11 +247,14 @@ export default function HomePage1920({ theme, setTheme }) {
                   <div className="niuma-home__features">
                     {featureItems.map((item) => {
                       return (
-                        <article className="niuma-home__feature" key={item.title}>
+                        <article
+                          className={`niuma-home__feature niuma-home__feature--${item.icon}`}
+                          key={item.title}
+                        >
                           <span className="niuma-home__feature-icon">
-                            <FeatureIcon icon={item.icon} />
+                            <FeatureBadgeIcon icon={item.icon} />
                           </span>
-                          <div>
+                          <div className="niuma-home__feature-copy">
                             <h3>{item.title}</h3>
                             <p>{item.description}</p>
                           </div>

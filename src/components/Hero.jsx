@@ -2,14 +2,14 @@ import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const cowLines = [
-  '今天也要稳稳摸鱼～',
+  '今天也要轻松开工～',
   '文件交给工具，快乐留给自己。',
-  '打工可以忙，心态要放松。'
+  '工作可以忙，心态记得放松。'
 ];
 
 const hiddenTools = [
   '图片转文字：截图里的内容一键提取',
-  'PDF拆分：只取需要的几页发出去',
+  'PDF拆分：只把需要的几页发出去',
   '文本去重：名单和关键词整理更快',
   '时间戳转换：查日志时少一点头疼'
 ];
@@ -29,6 +29,8 @@ function pickRandom(items, currentValue) {
 }
 
 export default function Hero({
+  hotTags = [],
+  onHotSearch,
   searchQuery,
   onSearchChange,
   onSearchSubmit
@@ -74,7 +76,7 @@ export default function Hero({
           欢迎来到 <span>牛马</span> 百宝箱
         </h1>
         <p className="niuma-home__hero-description">
-          图片、文档、转换处理小能手，帮你轻松搞定各种工作难题，工作再忙，也要记得摸鱼哦～
+          轻松搞定图片、文档、转换处理等各种工作难题，工作再忙，也要记得摸鱼哦～
         </p>
 
         <form
@@ -96,6 +98,23 @@ export default function Hero({
           <button type="submit">搜索</button>
         </form>
 
+        {hotTags.length ? (
+          <div className="niuma-home__hot-tags" aria-label="热门搜索">
+            <span>热门搜索：</span>
+            <div>
+              {hotTags.map((keyword) => (
+                <button
+                  key={keyword}
+                  type="button"
+                  onClick={() => onHotSearch?.(keyword)}
+                >
+                  {keyword}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
       </div>
 
       <div className="niuma-home__hero-illustration">
@@ -110,7 +129,7 @@ export default function Hero({
             <g transform="translate(1238 218) rotate(8)">
               <text className="niuma-home__hero-overlay-text niuma-home__hero-overlay-text--bubble" textAnchor="middle">
                 <tspan x="0" y="0">今天也要</tspan>
-                <tspan x="0" dy="76">加油鸭!</tspan>
+                <tspan x="0" dy="76">轻松开工!</tspan>
                 <tspan className="niuma-home__hero-overlay-heart" dx="16" dy="0">❤</tspan>
               </text>
             </g>
@@ -119,6 +138,17 @@ export default function Hero({
               <text className="niuma-home__hero-overlay-text niuma-home__hero-overlay-text--mug" textAnchor="middle">
                 摸鱼中
               </text>
+            </g>
+
+            <g className="niuma-home__hero-sparkles">
+              <path
+                d="M1127 182c18 0 27 14 30 30 3-16 12-30 30-30-18 0-27-14-30-30-3 16-12 30-30 30Z"
+                fill="#FFD77A"
+              />
+              <path
+                d="M1018 536c14 0 21 11 23 23 2-12 9-23 23-23-14 0-21-11-23-23-2 12-9 23-23 23Z"
+                fill="#FFC96B"
+              />
             </g>
           </svg>
 

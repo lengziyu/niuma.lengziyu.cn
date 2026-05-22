@@ -21,9 +21,9 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
       onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(e); }}
     >
       <div className="niuma-tool-card__top">
-        <div>
+        <div className="niuma-tool-card__heading">
           <p className="niuma-tool-card__category">{tool.category}</p>
-          <h3>{tool.title}</h3>
+          <h3>{tool.name}</h3>
         </div>
         <button
           aria-label={isFavorite ? `取消收藏 ${tool.name}` : `收藏 ${tool.name}`}

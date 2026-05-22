@@ -10,7 +10,7 @@ import {
   useSensor,
   useSensors
 } from '@dnd-kit/core';
-import { Ban, Clock3, FolderOpen, Pause, Play, RotateCcw, X } from 'lucide-react';
+import { Ban, Clock3, FolderOpen, Play, RotateCcw, X } from 'lucide-react';
 import { miniGameBoxes, miniGameFilePool, miniGameTips } from '../data/home';
 
 const DEFAULT_TIME = 30;
@@ -31,34 +31,34 @@ const TYPE_ART = {
   pdf: {
     shortLabel: 'PDF',
     bucketLabel: 'PDF',
-    primary: '#ff6b7f',
-    secondary: '#ff9aa8',
-    deep: '#b9344a',
-    soft: '#fff0f3'
+    primary: '#ff5f5f',
+    secondary: '#ff9a96',
+    deep: '#db3f3f',
+    soft: '#fff1f3'
   },
   image: {
     shortLabel: 'PNG',
     bucketLabel: 'PNG',
-    primary: '#55c878',
-    secondary: '#8ce5a3',
-    deep: '#28794a',
-    soft: '#effff4'
+    primary: '#8f6ff2',
+    secondary: '#c2a6ff',
+    deep: '#6847c7',
+    soft: '#f5efff'
   },
   word: {
     shortLabel: 'DOC',
     bucketLabel: 'DOC',
-    primary: '#5c8dff',
-    secondary: '#91b5ff',
-    deep: '#2b55b8',
+    primary: '#4c8dff',
+    secondary: '#91baff',
+    deep: '#2d5fc8',
     soft: '#eef4ff'
   },
   sheet: {
     shortLabel: 'XLS',
     bucketLabel: 'XLS',
-    primary: '#24bfa3',
-    secondary: '#76e2d1',
-    deep: '#147567',
-    soft: '#eafffb'
+    primary: '#57be67',
+    secondary: '#95dda0',
+    deep: '#2f8640',
+    soft: '#effff2'
   }
 };
 
@@ -158,65 +158,75 @@ function MiniFileArt({ type, label }) {
     <svg
       aria-hidden="true"
       className="niuma-file-chip__svg"
-      viewBox="0 0 86 82"
+      viewBox="0 0 78 82"
       role="img"
     >
       <defs>
-        <linearGradient id={`${gradientId}-file`} x1="12" x2="74" y1="7" y2="72" gradientUnits="userSpaceOnUse">
-          <stop stopColor={art.soft} />
-          <stop offset="1" stopColor="#ffffff" />
-        </linearGradient>
-        <linearGradient id={`${gradientId}-badge`} x1="0" x2="1" y1="0" y2="1">
+        <linearGradient id={`${gradientId}-file`} x1="12" x2="66" y1="9" y2="72" gradientUnits="userSpaceOnUse">
           <stop stopColor={art.secondary} />
           <stop offset="1" stopColor={art.primary} />
         </linearGradient>
+        <linearGradient id={`${gradientId}-fold`} x1="52" x2="72" y1="10" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0.36" />
+        </linearGradient>
       </defs>
       <path
-        d="M15 7h42l14 14v49a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V13a6 6 0 0 1 6-6Z"
+        d="M18 8h36l14 14v43c0 5.4-3.8 9.4-9.2 9.4H18c-5.4 0-9.2-4-9.2-9.4V17.4C8.8 12 12.6 8 18 8Z"
         fill={`url(#${gradientId}-file)`}
-        stroke={art.primary}
-        strokeOpacity="0.42"
-        strokeWidth="2"
+        stroke="#fff"
+        strokeOpacity="0.38"
+        strokeWidth="1.6"
       />
-      <path d="M57 8v15h15" fill={art.soft} stroke={art.primary} strokeOpacity="0.38" strokeWidth="2" />
-      <rect x="18" y="55" width="50" height="16" rx="7" fill={`url(#${gradientId}-badge)`} />
-      <text
-        x="43"
-        y="66"
-        fill="#fff"
-        fontFamily="Inter, PingFang SC, sans-serif"
-        fontSize="11"
-        fontWeight="900"
-        letterSpacing="0"
-        textAnchor="middle"
-      >
-        {title}
-      </text>
+      <path d="M54 9v15.5c0 2.5 1.8 4.3 4.2 4.3H68" fill={`url(#${gradientId}-fold)`} />
+      <path d="M54 9v15.5c0 2.5 1.8 4.3 4.2 4.3H68" fill="none" stroke="#fff" strokeOpacity="0.45" strokeWidth="1.6" />
+      <path d="M16 15c8-4.5 28-3.4 39.4 0" fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="4" strokeLinecap="round" />
 
       {isImage ? (
         <>
-          <circle cx="54" cy="25" r="4" fill={art.secondary} />
-          <path d="M18 46 30 32l9 8 7-6 13 12H18Z" fill={art.primary} opacity="0.9" />
+          <circle cx="50" cy="30" r="4.2" fill="#fff" fillOpacity="0.9" />
+          <path d="M20 55 31 41l8 8 7-7 12 13H20Z" fill="#fff" fillOpacity="0.88" />
         </>
       ) : isSheet ? (
-        <g fill="none" stroke={art.primary} strokeLinecap="round" strokeWidth="3">
-          <path d="M20 24h34" />
-          <path d="M20 36h34" />
-          <path d="M31 18v30" />
-          <path d="M44 18v30" />
-        </g>
+        <text
+          x="38"
+          y="52"
+          fill="#fff"
+          fontFamily="Inter, PingFang SC, sans-serif"
+          fontSize="30"
+          fontWeight="800"
+          textAnchor="middle"
+        >
+          X
+        </text>
       ) : isWord ? (
-        <g stroke={art.primary} strokeLinecap="round" strokeWidth="4">
-          <path d="M20 24h32" />
-          <path d="M20 35h26" />
-          <path d="M20 46h34" />
-        </g>
+        <>
+          <text
+            x="36"
+            y="50"
+            fill="#fff"
+            fontFamily="Inter, PingFang SC, sans-serif"
+            fontSize="28"
+            fontWeight="800"
+            textAnchor="middle"
+          >
+            W
+          </text>
+          <circle cx="53" cy="38" r="1.9" fill="#fff" fillOpacity="0.74" />
+          <circle cx="58" cy="38" r="1.9" fill="#fff" fillOpacity="0.74" />
+        </>
       ) : (
-        <g fill="none" stroke={art.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth="4">
-          <path d="M20 46h30" />
-          <path d="M20 32h34" />
-          <path d="M20 22h24" />
-        </g>
+        <text
+          x="38"
+          y="50"
+          fill="#fff"
+          fontFamily="Inter, PingFang SC, sans-serif"
+          fontSize="25"
+          fontWeight="800"
+          textAnchor="middle"
+        >
+          {title}
+        </text>
       )}
     </svg>
   );
@@ -230,39 +240,47 @@ function MiniBinArt({ type, label }) {
     <svg
       aria-label={label}
       className="niuma-game__bin-art"
-      viewBox="0 0 100 76"
+      viewBox="0 0 108 92"
       role="img"
     >
       <defs>
-        <linearGradient id={`${gradientId}-body`} x1="18" x2="82" y1="22" y2="72" gradientUnits="userSpaceOnUse">
-          <stop stopColor={art.secondary} />
+        <linearGradient id={`${gradientId}-body`} x1="20" x2="88" y1="30" y2="86" gradientUnits="userSpaceOnUse">
+          <stop stopColor={art.soft} />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0.68" />
+        </linearGradient>
+        <linearGradient id={`${gradientId}-rim`} x1="17" x2="91" y1="11" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" />
+          <stop offset="0.34" stopColor={art.secondary} />
           <stop offset="1" stopColor={art.primary} />
         </linearGradient>
-        <linearGradient id={`${gradientId}-rim`} x1="16" x2="84" y1="13" y2="30" gradientUnits="userSpaceOnUse">
+        <linearGradient id={`${gradientId}-inner`} x1="24" x2="84" y1="20" y2="34" gradientUnits="userSpaceOnUse">
           <stop stopColor={art.secondary} />
           <stop offset="1" stopColor={art.primary} />
         </linearGradient>
       </defs>
       <path
-        d="M18 27h64l-6 36a9 9 0 0 1-9 8H33a9 9 0 0 1-9-8L18 27Z"
+        d="M21 31h66l-5.8 48.5c-.7 5.2-4.5 8.5-9.8 8.5H36.6c-5.3 0-9.1-3.3-9.8-8.5L21 31Z"
         fill={`url(#${gradientId}-body)`}
+        stroke={art.primary}
+        strokeOpacity="0.26"
+        strokeWidth="2"
       />
       <path
-        d="M15 25c0-8 15-15 35-15s35 7 35 15-15 15-35 15-35-7-35-15Z"
+        d="M16 27 24 12h60l8 15v9H16v-9Z"
         fill={`url(#${gradientId}-rim)`}
+        stroke={art.primary}
+        strokeOpacity="0.32"
+        strokeWidth="2"
       />
-      <ellipse cx="50" cy="23.5" rx="27" ry="8.5" fill="#ffffff" fillOpacity="0.64" />
-      <ellipse cx="50" cy="25" rx="21" ry="5.6" fill={art.deep} fillOpacity="0.22" />
-      <path d="M22 28c5 6 16 10 28 10s23-4 28-10" fill="none" stroke="#fff" strokeOpacity="0.44" strokeWidth="3" strokeLinecap="round" />
-      <rect x="25" y="43" width="50" height="21" rx="8" fill="#fff" fillOpacity="0.94" />
+      <path d="M24 18h60l4.8 9H19.2L24 18Z" fill={`url(#${gradientId}-inner)`} opacity="0.6" />
+      <path d="M23 37h62" stroke="#fff" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" />
       <text
-        x="50"
-        y="58"
-        fill={art.deep}
+        x="54"
+        y="66"
+        fill="#2d3455"
         fontFamily="Inter, PingFang SC, sans-serif"
-        fontSize="16"
-        fontWeight="950"
-        letterSpacing="0"
+        fontSize="17"
+        fontWeight="800"
         textAnchor="middle"
       >
         {art.bucketLabel}
@@ -281,10 +299,11 @@ function MiniFile({ file, dragging = false }) {
     left: `${file.x}%`,
     top: `${file.y}%`,
     rotate: `${file.rotation}deg`,
-    transform: transform
-      ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)`
-      : undefined,
-    opacity: file.status === 'exiting' ? 0 : isDragging ? 0.4 : 1
+    transform:
+      !isDragging && transform
+        ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)`
+        : undefined,
+    opacity: file.status === 'exiting' ? 0 : isDragging ? 0 : 1
   };
 
   return (
@@ -604,6 +623,12 @@ export default function MiniGame({
           <span>文件整理</span>
         </div>
         <div className="niuma-game__header-tools">
+          {game.status === 'playing' ? (
+            <div className="niuma-game__score">
+              <span>得分</span>
+              <strong>{game.score}</strong>
+            </div>
+          ) : null}
           <div className={`niuma-game__timer ${game.status === 'playing' && game.timeLeft <= 5 ? 'is-urgent' : ''}`}>
             <Clock3 aria-hidden="true" size={12} />
             <span>{countdownLabel}</span>
@@ -611,28 +636,12 @@ export default function MiniGame({
           {game.status === 'playing' || game.status === 'paused' ? (
             <>
               <button
-                className="niuma-home__primary-pill niuma-game__start-btn"
-                type="button"
-                onClick={beginGame}
-              >
-                <RotateCcw aria-hidden="true" size={14} />
-                <span>重来</span>
-              </button>
-              <button
-                className="niuma-home__ghost-pill niuma-game__ctrl-btn"
-                type="button"
-                onClick={pauseOrResumeGame}
-              >
-                {game.status === 'playing' ? <Pause aria-hidden="true" size={14} /> : <Play aria-hidden="true" size={14} />}
-                <span>{game.status === 'playing' ? '暂停' : '继续'}</span>
-              </button>
-              <button
                 className="niuma-home__ghost-pill niuma-game__ctrl-btn is-danger"
                 type="button"
                 onClick={cancelGame}
               >
                 <Ban aria-hidden="true" size={14} />
-                <span>取消</span>
+                <span>不玩了</span>
               </button>
             </>
           ) : (
@@ -646,6 +655,7 @@ export default function MiniGame({
 
       <div className="niuma-game__body">
         <DndContext
+          autoScroll={false}
           collisionDetection={pointerWithin}
           measuring={{
             droppable: {
@@ -682,8 +692,8 @@ export default function MiniGame({
               ) : null}
             </div>
 
-            <div className="niuma-game__bins">
-              {miniGameBoxes.map((box) => {
+          <div className="niuma-game__bins">
+            {miniGameBoxes.map((box) => {
                 const tone =
                   game.feedbackBin === box.type ? game.feedbackKind : game.hoverBin === box.type ? 'hover' : '';
 
@@ -703,9 +713,6 @@ export default function MiniGame({
 
         <div className="niuma-game__footer">
           <div className="niuma-game__footer-copy">
-            <p>
-              得分：<strong>{game.score}</strong>
-            </p>
             {(game.status === 'playing' || game.status === 'paused') && (
               <p className="niuma-widget__subcopy">{game.tip}</p>
             )}
