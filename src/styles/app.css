@@ -5110,6 +5110,117 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   background: rgba(125, 88, 255, 0.12);
 }
 
+.detail-workbench__ocr-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.detail-workbench__ocr-image {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(248, 246, 253, 0.9);
+  border: 1px solid rgba(226, 220, 244, 0.8);
+}
+
+.detail-workbench__ocr-image img {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+}
+
+.detail-workbench__ocr-reselect {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.detail-workbench__ocr-reselect:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.detail-workbench__ocr-result {
+  flex: 1;
+  min-height: 120px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(248, 246, 253, 0.9);
+  border: 1px solid rgba(226, 220, 244, 0.8);
+}
+
+.detail-workbench__ocr-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.detail-workbench__ocr-result-header strong {
+  font-size: 14px;
+  color: #1b1d26;
+}
+
+.detail-workbench__ocr-result-header .detail-workbench__copy-btn {
+  margin-top: 0;
+  min-height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.detail-workbench__ocr-text {
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #3d3f52;
+  font-size: 14px;
+  line-height: 1.7;
+  font-family: inherit;
+}
+
+.detail-workbench__ocr-loading {
+  margin: 0;
+  color: #7d58ff;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.dark .detail-workbench__ocr-image {
+  background: rgba(30, 28, 50, 0.5);
+  border-color: rgba(178, 167, 255, 0.12);
+}
+
+.dark .detail-workbench__ocr-result {
+  background: rgba(30, 28, 50, 0.5);
+  border-color: rgba(178, 167, 255, 0.12);
+}
+
+.dark .detail-workbench__ocr-result-header strong {
+  color: #f0eef8;
+}
+
+.dark .detail-workbench__ocr-text {
+  color: #c8c4e0;
+}
+
 .detail-workbench__dropzone.is-dragging {
   border-color: #7d58ff;
   background: linear-gradient(180deg, rgba(125, 88, 255, 0.06), rgba(250, 247, 255, 0.92));

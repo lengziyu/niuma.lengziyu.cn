@@ -79,8 +79,7 @@ function extensionFromMimeType(mime) {
 
 const PDF_TO_WORD_MODE_BY_LABEL = {
   '文字可编辑版': 'editable_open_source',
-  '版式还原版': 'visual_exact',
-  '高保真版（图片）': 'hybrid_smart',
+  '版式还原版（图片）': 'visual_exact',
   '开源可编辑版': 'editable_open_source',
   '视觉一比一版': 'visual_exact',
   '尽量还原': 'editable_open_source',
@@ -128,6 +127,32 @@ async function convertPdfToWordOnServer(file, selectedMode) {
   const blob = await response.blob();
   if (!blob.size) {
     throw new Error('PDF 转 Word 服务没有返回有效文件，请稍后重试。');
+  }
+
+  return blob;
+}
+
+async function callServerApi(endpoint, file, extraFields = {}) {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  for (const [key, value] of Object.entries(extraFields)) {
+    formData.append(key, value);
+  }
+
+  let response;
+  try {
+    response = await fetch(endpoint, { method: 'POST', body: formData });
+  } catch {
+    throw new Error('服务未启动或网络不可用，请确认服务端已部署。');
+  }
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response));
+  }
+
+  const blob = await response.blob();
+  if (!blob.size) {
+    throw new Error('服务没有返回有效文件，请稍后重试。');
   }
 
   return blob;
@@ -632,9 +657,15 @@ export default function Workbench({ tool }) {
       errorMessage: null,
       status: 'pending'
     }));
-    setFileQueue((cur) => [...cur, ...newItems]);
 
-    if (tool.id === 'image-resize' && files.length > 0 && fileQueue.length === 0) {
+    if (tool.multiple === false) {
+      // Single file mode: replace existing
+      setFileQueue(newItems.slice(0, 1));
+    } else {
+      setFileQueue((cur) => [...cur, ...newItems]);
+    }
+
+    if (tool.id === 'image-resize' && files.length > 0) {
       try {
         const firstImage = await loadImage(files[0]);
         const nextWidth = Math.max(1, firstImage.naturalWidth || resizeWidth);
@@ -703,16 +734,62 @@ export default function Workbench({ tool }) {
           // Simulate - real PDF generation would need jsPDF
           blob = item.file;
           outputName = item.name.replace(/\.[^.]+$/, '.pdf');
+        } else if (tool.id === 'image-ocr') {
+          // OCR: call server, get text back
+          const formData = new FormData();
+          formData.append('file', item.file, item.file.name);
+          formData.append('language', settings.language || '中文优先');
+          const resp = await fetch('/api/image-ocr', { method: 'POST', body: formData });
+          if (!resp.ok) throw new Error(await readApiError(resp));
+          const data = await resp.json();
+          // Store OCR text in a special field
+          setFileQueue((cur) => cur.map((f) => f.id === item.id ? {
+            ...f,
+            status: 'done',
+            ocrText: data.text || '未识别到文字内容',
+            blob: null,
+            outputName: null,
+            resultSize: null
+          } : f));
+          continue;
         } else if (tool.id === 'pdf-to-word') {
           blob = await convertPdfToWordOnServer(item.file, settings.layout || '文字可编辑版');
           outputName = item.name.replace(/\.pdf$/i, '.docx');
+        } else if (tool.id === 'word-to-pdf') {
+          blob = await callServerApi('/api/word-to-pdf', item.file);
+          outputName = item.name.replace(/\.(docx?|doc)$/i, '.pdf');
+        } else if (tool.id === 'excel-to-csv') {
+          blob = await callServerApi('/api/excel-to-csv', item.file, { encoding: settings.encoding || 'UTF-8' });
+          outputName = item.name.replace(/\.(xlsx?|xls)$/i, '.csv');
+        } else if (tool.id === 'csv-to-excel') {
+          blob = await callServerApi('/api/csv-to-excel', item.file);
+          outputName = item.name.replace(/\.csv$/i, '.xlsx');
+        } else if (tool.id === 'pdf-to-image') {
+          blob = await callServerApi('/api/pdf-to-image', item.file, {
+            image_type: settings.imageType || 'PNG',
+            page_range: settings.pageRange === '首页' ? 'first' : 'all'
+          });
+          const ext = (settings.imageType || 'PNG').toLowerCase();
+          outputName = item.name.replace(/\.pdf$/i, fileQueue.length > 1 || settings.pageRange !== '首页' ? '_images.zip' : `.${ext}`);
+        } else if (tool.id === 'pdf-watermark') {
+          blob = await callServerApi('/api/pdf-watermark', item.file, {
+            text: settings.watermark || '仅供内部使用',
+            position: settings.position || '居中斜排'
+          });
+          outputName = item.name.replace(/\.pdf$/i, '_watermarked.pdf');
+        } else if (tool.id === 'pdf-split') {
+          const rangeMap = { '第 1-3 页': [1, 3], '第 4-6 页': [4, 6], '自定义范围': [1, -1] };
+          const [s, e] = rangeMap[settings.range] || [1, -1];
+          blob = await callServerApi('/api/pdf-split', item.file, { start: String(s), end: String(e) });
+          outputName = item.name.replace(/\.pdf$/i, `_p${s}-${e === -1 ? 'end' : e}.pdf`);
+        } else if (tool.id === 'pdf-merge') {
+          // For merge, we send all files at once (handled separately below)
+          blob = item.file;
+          outputName = 'merged.pdf';
         } else {
-          // Generic simulation for other file tools
+          // Generic fallback simulation
           await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
           blob = item.file;
-          if (tool.id === 'word-to-pdf') outputName = item.name.replace(/\.(docx?|doc)$/i, '.pdf');
-          else if (tool.id === 'excel-to-csv') outputName = item.name.replace(/\.(xlsx?|xls)$/i, '.csv');
-          else if (tool.id === 'csv-to-excel') outputName = item.name.replace(/\.csv$/i, '.xlsx');
         }
 
         setFileQueue((cur) => cur.map((f) => f.id === item.id ? {
@@ -845,6 +922,65 @@ export default function Workbench({ tool }) {
                 onChange={(e) => { setTextInput(e.target.value); setTextProcessed(false); }}
               />
             </>
+          ) : tool.id === 'image-ocr' ? (
+            <>
+              <input
+                ref={fileInputRef}
+                accept={tool.accept}
+                className="detail-workbench__file-input"
+                type="file"
+                onChange={handleFilePick}
+              />
+
+              {fileQueue.length === 0 ? (
+                <>
+                  <div className="detail-workbench__intro">
+                    <CloudUpload aria-hidden="true" size={56} />
+                    <h2>上传图片识别文字</h2>
+                    <p>支持 PNG、JPG、WebP 格式</p>
+                  </div>
+                  <button
+                    className="detail-workbench__choose"
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    选择图片
+                  </button>
+                </>
+              ) : (
+                <div className="detail-workbench__ocr-layout">
+                  <div className="detail-workbench__ocr-image">
+                    <img src={URL.createObjectURL(fileQueue[0].file)} alt="待识别图片" />
+                    <button
+                      className="detail-workbench__ocr-reselect"
+                      type="button"
+                      onClick={() => { clearAll(); fileInputRef.current?.click(); }}
+                    >
+                      重新选择
+                    </button>
+                  </div>
+                  {fileQueue[0]?.ocrText ? (
+                    <div className="detail-workbench__ocr-result">
+                      <div className="detail-workbench__ocr-result-header">
+                        <strong>识别结果</strong>
+                        <button
+                          className="detail-workbench__copy-btn"
+                          type="button"
+                          onClick={() => navigator.clipboard?.writeText(fileQueue[0].ocrText)}
+                        >
+                          复制
+                        </button>
+                      </div>
+                      <pre className="detail-workbench__ocr-text">{fileQueue[0].ocrText}</pre>
+                    </div>
+                  ) : fileQueue[0]?.status === 'processing' ? (
+                    <div className="detail-workbench__ocr-result">
+                      <p className="detail-workbench__ocr-loading">正在识别中…</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </>
           ) : (
             <>
               {fileQueue.length === 0 && (
@@ -859,7 +995,7 @@ export default function Workbench({ tool }) {
                 ref={fileInputRef}
                 accept={tool.accept}
                 className="detail-workbench__file-input"
-                multiple
+                multiple={tool.multiple !== false}
                 type="file"
                 onChange={handleFilePick}
               />
@@ -877,13 +1013,21 @@ export default function Workbench({ tool }) {
               {fileQueue.length > 0 && (
                 <div className="detail-workbench__file-list">
                   <div className="detail-workbench__file-list-header">
-                    <span>{fileQueue.length} 个文件{allDone ? `，已完成 ${doneCount} 个` : ''}</span>
+                    <span>
+                      {tool.multiple === false
+                        ? fileQueue[0]?.name || '1 个文件'
+                        : `${fileQueue.length} 个文件${allDone ? `，已完成 ${doneCount} 个` : ''}`
+                      }
+                    </span>
                     <div className="detail-workbench__file-list-actions">
-                      <button type="button" onClick={() => fileInputRef.current?.click()}>
-                        继续添加
-                      </button>
-                      <button type="button" onClick={clearAll}>
-                        <Trash2 size={14} /> 清空
+                      {tool.multiple !== false && (
+                        <button type="button" onClick={() => fileInputRef.current?.click()}>
+                          继续添加
+                        </button>
+                      )}
+                      <button type="button" onClick={() => { clearAll(); fileInputRef.current?.click(); }}>
+                        {tool.multiple === false ? '重新选择' : ''}
+                        <Trash2 size={14} /> {tool.multiple !== false ? '清空' : ''}
                       </button>
                     </div>
                   </div>
@@ -1241,6 +1385,8 @@ export default function Workbench({ tool }) {
               </button>
             </div>
           ) : null}
+
+          {tool.id === 'image-ocr' && fileQueue.length > 0 && fileQueue[0]?.ocrText ? null : null}
         </div>
       </section>
 

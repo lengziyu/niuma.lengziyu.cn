@@ -4,12 +4,12 @@ export const tools = [
     name: '图片压缩',
     category: '图片处理',
     inputMode: 'file',
+    multiple: true,
     tagline: '活动海报、汇报截图、报名表附件，先瘦身再发。',
-    description:
-      '参考常见在线压缩工具的顺手流程，支持拖拽上传、批量排队和本地处理语气。',
+    description: '支持批量拖拽上传，一次压缩多张图片，本地处理不上传服务器。',
     actionLabel: '开始压缩',
     successMessage: '图片已经压好，可以继续下载或重新调整压缩强度。',
-    inputLabel: '拖拽 PNG、JPG、WebP 到这里，或者点一下选文件',
+    inputLabel: '拖拽图片到这里，支持同时添加多张',
     accept: '.png,.jpg,.jpeg,.webp',
     formats: ['PNG', 'JPG', 'WebP'],
     settings: [
@@ -29,9 +29,7 @@ export const tools = [
       }
     ],
     tips: [
-      '支持批量处理，适合邮件附件、企业微信和投递系统上传前准备。',
-      '默认优先压缩图片体积，不走“上传云端”的夸张表达，整体更像真实办公产品。',
-      '后续可继续接入真实压缩逻辑、打包下载和前后对比预览。'
+      '支持批量处理，适合邮件附件、企业微信和投递系统上传前准备。'
     ],
     sampleFile: {
       name: '周报封面-v3.png',
@@ -46,12 +44,12 @@ export const tools = [
     name: '修改图片尺寸',
     category: '图片处理',
     inputMode: 'file',
+    multiple: false,
     tagline: '公众号头图、工牌照片、报名封面，一键改好尺寸。',
-    description:
-      '常用比例和像素预设都先帮你备好，减少来回试错。',
+    description: '常用比例和像素预设一键套用，支持自定义宽高和锁定比例。',
     actionLabel: '生成新尺寸',
-    successMessage: '新尺寸已经准备好，确认预设无误后就可以导出。',
-    inputLabel: '上传需要调整尺寸的图片，支持批量排队',
+    successMessage: '新尺寸已生成，可以直接下载。',
+    inputLabel: '上传一张需要调整尺寸的图片',
     accept: '.png,.jpg,.jpeg,.webp',
     formats: ['PNG', 'JPG', 'WebP'],
     settings: [
@@ -71,8 +69,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合活动报名、商城素材、社群配图尺寸统一。',
-      '后续可继续接入裁切框、自定义像素输入和批量改尺寸。'
+      '适合活动报名、商城素材、社群配图尺寸统一。'
     ],
     sampleFile: {
       name: '活动主视觉.jpg',
@@ -87,12 +84,12 @@ export const tools = [
     name: '图片格式转换',
     category: '图片处理',
     inputMode: 'file',
+    multiple: false,
     tagline: 'PNG、JPG、WebP 来回切，不必为了导出开大软件。',
-    description:
-      '适合素材格式调整、上传兼容处理和页面资源优化。',
+    description: '选择目标格式后一键转换，支持透明背景处理。',
     actionLabel: '开始转换',
-    successMessage: '格式转换已完成，导出前可以继续切换目标格式。',
-    inputLabel: '上传图片后选择要导出的格式',
+    successMessage: '格式转换已完成，可以直接下载。',
+    inputLabel: '上传一张图片，选择要导出的格式',
     accept: '.png,.jpg,.jpeg,.webp,.avif',
     formats: ['PNG', 'JPG', 'WebP', 'AVIF'],
     settings: [
@@ -112,7 +109,6 @@ export const tools = [
       }
     ],
     tips: [
-      '适合网页资源优化和常见系统上传兼容。',
       '透明图转 JPG 时建议自动铺底色，避免导出异常。'
     ],
     sampleFile: {
@@ -128,11 +124,11 @@ export const tools = [
     name: '图片转 PDF',
     category: '图片处理',
     inputMode: 'file',
+    multiple: true,
     tagline: '截图、扫描件、票据照片，整理成一个 PDF 再发更省心。',
-    description:
-      '适合报销票据、会议材料和截图归档，上传多张图片后统一导出。',
+    description: '上传多张图片按顺序合成一个 PDF，适合报销票据和截图归档。',
     actionLabel: '导出 PDF',
-    successMessage: 'PDF 已准备好，可以继续调整排序后再导出。',
+    successMessage: 'PDF 已准备好，可以直接下载。',
     inputLabel: '上传一张或多张图片，按顺序合成 PDF',
     accept: '.png,.jpg,.jpeg,.webp',
     formats: ['PNG', 'JPG', 'WebP'],
@@ -153,8 +149,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合票据整理、扫描件归档和汇报截图打包。',
-      '后续可支持拖拽排序和页码连续导出。'
+      '适合票据整理、扫描件归档和汇报截图打包。'
     ],
     sampleFile: {
       name: '报销票据 4 张',
@@ -169,12 +164,12 @@ export const tools = [
     name: '图片转文字',
     category: '图片处理',
     inputMode: 'file',
+    multiple: false,
     tagline: '海报文案、截图说明、扫描件里的字，提出来继续改。',
-    description:
-      '适合从海报、表格截图和扫描图片里快速提取文字内容。',
+    description: '上传一张图片，AI 自动识别并提取其中的文字内容。',
     actionLabel: '提取文字',
-    successMessage: '文字内容已提取，可以继续复制整理。',
-    inputLabel: '上传需要识别的图片，支持单张或多张排队',
+    successMessage: '文字内容已提取，可以复制使用。',
+    inputLabel: '上传一张需要识别文字的图片',
     accept: '.png,.jpg,.jpeg,.webp',
     formats: ['PNG', 'JPG', 'WebP'],
     settings: [
@@ -194,8 +189,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合截图文案复用、扫描件录入和图片资料摘录。',
-      '后续可支持 OCR 结果校对和导出 TXT / DOCX。'
+      '适合截图文案复用、扫描件录入和图片资料摘录。'
     ],
     sampleFile: {
       name: '会议纪要截图.png',
@@ -210,12 +204,12 @@ export const tools = [
     name: 'PDF 转 Word',
     category: '文档转换',
     inputMode: 'file',
+    multiple: false,
     tagline: '收到 PDF 版材料还要改字时，先转成可编辑稿。',
-    description:
-      '用于方案、制度、合同等常见办公文档的可编辑处理入口。',
+    description: '上传一个 PDF 文件，转换为可编辑的 Word 文档。',
     actionLabel: '开始转换',
-    successMessage: '可编辑文档已经准备好，继续校对版式即可。',
-    inputLabel: '上传 PDF 文档后生成可编辑 Word',
+    successMessage: '可编辑文档已准备好，可以直接下载。',
+    inputLabel: '上传一个 PDF 文件',
     accept: '.pdf',
     formats: ['PDF'],
     settings: [
@@ -223,7 +217,7 @@ export const tools = [
         id: 'layout',
         label: '转换方案',
         type: 'segmented',
-        options: ['文字可编辑版', '版式还原版', '高保真版（图片）'],
+        options: ['文字可编辑版', '版式还原版（图片）'],
         defaultValue: '文字可编辑版'
       },
       {
@@ -235,8 +229,8 @@ export const tools = [
       }
     ],
     tips: [
-      '适合需要继续修改内容的办公材料。',
-      '扫描件建议后续配合 OCR 能力一起接入。'
+      '文字可编辑版适合需要修改内容的场景。',
+      '版式还原版适合打印归档，排版完美但文字不可编辑。'
     ],
     sampleFile: {
       name: '客户修改意见.pdf',
@@ -251,12 +245,12 @@ export const tools = [
     name: 'Word 转 PDF',
     category: '文档转换',
     inputMode: 'file',
+    multiple: false,
     tagline: '定稿要发领导、发客户、发打印店时，统一导成 PDF。',
-    description:
-      '适合汇报材料、合同终稿、报名表和培训讲义的稳定输出。',
+    description: '上传一个 Word 文档，转换为排版稳定的 PDF 文件。',
     actionLabel: '导出 PDF',
-    successMessage: 'PDF 已生成，版式和分页可以继续复查。',
-    inputLabel: '上传 Word 文档后输出稳定版 PDF',
+    successMessage: 'PDF 已生成，可以直接下载。',
+    inputLabel: '上传一个 Word 文档（.doc / .docx）',
     accept: '.doc,.docx',
     formats: ['DOC', 'DOCX'],
     settings: [
@@ -266,18 +260,10 @@ export const tools = [
         type: 'segmented',
         options: ['标准', '清晰打印'],
         defaultValue: '标准'
-      },
-      {
-        id: 'mode',
-        label: '版式模式',
-        type: 'select',
-        options: ['保持原分页', '自动适应 A4'],
-        defaultValue: '保持原分页'
       }
     ],
     tips: [
-      '适合终稿输出和跨设备分享。',
-      '后续可接入批量导出和页眉页脚检查。'
+      '适合终稿输出和跨设备分享。'
     ],
     sampleFile: {
       name: '月度复盘.docx',
@@ -292,12 +278,12 @@ export const tools = [
     name: 'PDF 合并',
     category: '文档转换',
     inputMode: 'file',
+    multiple: true,
     tagline: '合同附件、报名材料、审批文件，一次整理成一个包。',
-    description:
-      '按顺序拖放多个 PDF，统一整理后导出，适合提交流程使用。',
+    description: '上传多个 PDF 文件，按顺序合并成一个文件。',
     actionLabel: '合并文档',
-    successMessage: '合并文件已准备好，顺序确认后就能导出。',
-    inputLabel: '上传多个 PDF，按顺序合并成一个文件',
+    successMessage: '合并完成，可以直接下载。',
+    inputLabel: '上传 2 个或以上 PDF 文件',
     accept: '.pdf',
     formats: ['PDF'],
     settings: [
@@ -307,18 +293,10 @@ export const tools = [
         type: 'segmented',
         options: ['上传顺序', '文件名排序'],
         defaultValue: '上传顺序'
-      },
-      {
-        id: 'bookmark',
-        label: '导出选项',
-        type: 'select',
-        options: ['仅合并', '生成目录书签'],
-        defaultValue: '仅合并'
       }
     ],
     tips: [
-      '适合审批流附件打包和资料归档。',
-      '后续可支持拖拽调整顺序和封面页插入。'
+      '适合审批流附件打包和资料归档。'
     ],
     sampleFile: {
       name: '三份报名材料',
@@ -333,12 +311,12 @@ export const tools = [
     name: 'PDF 拆分',
     category: '文档转换',
     inputMode: 'file',
+    multiple: false,
     tagline: '只想发其中几页，或者按章节拆文件时更省事。',
-    description:
-      '支持按页码范围拆分，适合资料分发和单页提取。',
+    description: '上传一个 PDF，选择页码范围拆分导出。',
     actionLabel: '拆分文档',
-    successMessage: '拆分结果已准备好，可以继续调整页码范围。',
-    inputLabel: '上传 PDF 后选择页码范围拆分',
+    successMessage: '拆分完成，可以直接下载。',
+    inputLabel: '上传一个 PDF 文件',
     accept: '.pdf',
     formats: ['PDF'],
     settings: [
@@ -358,8 +336,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合材料节选、发票页拆分和资料精简转发。',
-      '后续可支持可视化页码预览。'
+      '适合材料节选、发票页拆分和资料精简转发。'
     ],
     sampleFile: {
       name: '培训手册.pdf',
@@ -374,12 +351,12 @@ export const tools = [
     name: 'PDF 转图片',
     category: '文档转换',
     inputMode: 'file',
+    multiple: false,
     tagline: '汇报页、物料页、审批页单独发图时更方便。',
-    description:
-      '把 PDF 页面导出成图片，适合群里转发、网页贴图和审批截图。',
+    description: '上传一个 PDF，按页导出为 PNG 或 JPG 图片。',
     actionLabel: '导出图片',
-    successMessage: '页面图片已经准备好，可以继续选择导出格式。',
-    inputLabel: '上传 PDF 后按页导出为图片',
+    successMessage: '图片已导出，可以直接下载。',
+    inputLabel: '上传一个 PDF 文件',
     accept: '.pdf',
     formats: ['PDF'],
     settings: [
@@ -399,8 +376,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合审批截图、汇报页分享和海报页导出。',
-      '后续可支持分辨率设置和长图拼接。'
+      '适合审批截图、汇报页分享和海报页导出。'
     ],
     sampleFile: {
       name: '活动方案.pdf',
@@ -415,12 +391,12 @@ export const tools = [
     name: 'PDF 加水印',
     category: '文档转换',
     inputMode: 'file',
+    multiple: false,
     tagline: '内审稿、样章、培训资料，加个标识更省心。',
-    description:
-      '适合合同草稿、内部流转材料和课程资料统一加水印。',
+    description: '上传一个 PDF，添加文字水印后导出。',
     actionLabel: '添加水印',
-    successMessage: '水印已添加完成，可以继续调整透明度或位置。',
-    inputLabel: '上传 PDF 文档后添加文字水印',
+    successMessage: '水印已添加，可以直接下载。',
+    inputLabel: '上传一个 PDF 文件',
     accept: '.pdf',
     formats: ['PDF'],
     settings: [
@@ -440,8 +416,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合内部资料流转、样章发送和对外预览稿控制。',
-      '后续可支持图片水印、透明度和字号调节。'
+      '适合内部资料流转、样章发送和对外预览稿控制。'
     ],
     sampleFile: {
       name: '制度草稿.pdf',
@@ -456,22 +431,15 @@ export const tools = [
     name: 'Excel 转 CSV',
     category: '表格与文本',
     inputMode: 'file',
+    multiple: false,
     tagline: '导入系统、清理数据、发给技术同事时经常会用到。',
-    description:
-      '把 Excel 表快速转成 CSV，方便上传系统、导入数据库或继续处理。',
+    description: '上传一个 Excel 文件，导出为标准 CSV 格式。',
     actionLabel: '导出 CSV',
-    successMessage: 'CSV 已生成，编码和分隔符可以继续调整。',
-    inputLabel: '上传 Excel 文件后导出标准 CSV',
+    successMessage: 'CSV 已生成，可以直接下载。',
+    inputLabel: '上传一个 Excel 文件（.xls / .xlsx）',
     accept: '.xls,.xlsx',
     formats: ['XLS', 'XLSX'],
     settings: [
-      {
-        id: 'sheet',
-        label: '工作表',
-        type: 'select',
-        options: ['第一个工作表', '当前活动工作表', '全部工作表分别导出'],
-        defaultValue: '第一个工作表'
-      },
       {
         id: 'encoding',
         label: '编码格式',
@@ -481,8 +449,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合导数、系统导入和跨平台交换数据。',
-      '后续可支持列分隔符和空值处理规则。'
+      '适合导数、系统导入和跨平台交换数据。'
     ],
     sampleFile: {
       name: '客户清单.xlsx',
@@ -497,12 +464,12 @@ export const tools = [
     name: 'CSV 转 Excel',
     category: '表格与文本',
     inputMode: 'file',
+    multiple: false,
     tagline: '拿到一堆原始 CSV 数据后，先转回 Excel 更方便同事处理。',
-    description:
-      '把 CSV 文件整理成 Excel，适合再分发、标注和人工校对。',
+    description: '上传一个 CSV 文件，转换为 Excel 格式。',
     actionLabel: '导出 Excel',
-    successMessage: 'Excel 已生成，可以继续指定工作表名称。',
-    inputLabel: '上传 CSV 文件后导出 Excel',
+    successMessage: 'Excel 已生成，可以直接下载。',
+    inputLabel: '上传一个 CSV 文件',
     accept: '.csv',
     formats: ['CSV'],
     settings: [
@@ -522,8 +489,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合原始数据回传、业务校对和表格再编辑。',
-      '后续可支持编码识别和多文件批量转换。'
+      '适合原始数据回传、业务校对和表格再编辑。'
     ],
     sampleFile: {
       name: '导出结果.csv',
@@ -540,11 +506,10 @@ export const tools = [
     inputMode: 'text',
     previewMode: 'dedup',
     tagline: '群名单、标签词、批量关键词整理时很常用。',
-    description:
-      '把一段多行文本去重并保留顺序，适合整理名单、标签和导入数据。',
+    description: '粘贴多行文本，一键去重并保留顺序。',
     actionLabel: '开始去重',
-    successMessage: '去重结果已更新，可以继续复制或再次编辑内容。',
-    inputLabel: '把需要去重的内容粘贴进来，每行会按一条记录处理',
+    successMessage: '去重结果已更新，可以复制使用。',
+    inputLabel: '把需要去重的内容粘贴进来，每行按一条记录处理',
     textPlaceholder: '上海\n北京\n上海\n杭州\n北京',
     formats: ['文本'],
     settings: [
@@ -564,8 +529,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合群名单、商品标签、投放关键词和文本导入清理。',
-      '后续可支持排序、统计重复次数和导出 TXT。'
+      '适合群名单、商品标签、投放关键词和文本导入清理。'
     ],
     sampleFile: {
       name: '名单去重',
@@ -582,12 +546,11 @@ export const tools = [
     inputMode: 'text',
     previewMode: 'qr',
     tagline: '链接、文档、表单、活动页，临时出码不用再找第三方。',
-    description:
-      '快速生成可下载二维码，适合群公告、海报、工位贴纸和线下物料。',
+    description: '输入链接或文本，即时生成可下载的二维码图片。',
     actionLabel: '生成二维码',
-    successMessage: '二维码已经生成，可以继续切换样式或重新编辑内容。',
+    successMessage: '二维码已生成，可以直接下载。',
     inputLabel: '输入链接或文本内容，立即生成二维码',
-    textPlaceholder: '例如 https://niuma.lengziyu.cn/signup 或一段活动说明',
+    textPlaceholder: '例如 https://niuma.lengziyu.cn 或一段活动说明',
     accept: '.txt',
     formats: ['链接', '文本'],
     settings: [
@@ -607,8 +570,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合群通知、会场指引、资料下载入口。',
-      '后续可接入 LOGO 嵌入、尺寸导出和短链能力。'
+      '适合群通知、会场指引、资料下载入口。'
     ],
     sampleFile: {
       name: '培训报名链接',
@@ -625,10 +587,9 @@ export const tools = [
     inputMode: 'text',
     previewMode: 'timestamp',
     tagline: '日志排查、接口联调、表格核对时间时很顺手。',
-    description:
-      '支持毫秒和秒级时间戳互转，适合开发协作、数据核对和运营排查。',
+    description: '输入时间戳或日期，批量互转，支持秒级和毫秒级。',
     actionLabel: '开始转换',
-    successMessage: '转换结果已更新，可以继续批量粘贴多行内容。',
+    successMessage: '转换结果已更新，可以复制使用。',
     inputLabel: '输入时间戳或日期时间，支持一行一条批量转换',
     textPlaceholder: '1715846400\n1715846400000\n2026-05-16 09:30:00',
     formats: ['时间戳', '日期时间'],
@@ -649,8 +610,7 @@ export const tools = [
       }
     ],
     tips: [
-      '适合日志时间核对、接口联调和数据导出检查。',
-      '后续可支持 ISO 8601、批量导出和复制格式模板。'
+      '适合日志时间核对、接口联调和数据导出检查。'
     ],
     sampleFile: {
       name: '时间戳转换',
