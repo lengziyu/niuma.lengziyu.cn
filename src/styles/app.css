@@ -3283,7 +3283,7 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 
 @media (min-width: 1860px) and (max-width: 2060px) {
   .page--niuma-home .niuma-home__layout {
-    margin-top: 116px;
+    margin-top: 66px;
   }
 
   .page--niuma-home .niuma-home__hero-card {
