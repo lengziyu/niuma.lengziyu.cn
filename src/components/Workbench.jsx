@@ -16,11 +16,12 @@ import {
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import UPNG from 'upng-js';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import PdfJsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 
 /* ─── Utilities ─── */
 
 let pdfJsLibPromise = null;
+let pdfJsWorkerPromise = null;
 
 function formatBytes(value) {
   if (!value) return '0 KB';
@@ -194,12 +195,25 @@ function escapeXml(value) {
 async function loadPdfJs() {
   if (!pdfJsLibPromise) {
     pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs').then((module) => {
-      module.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
       return module;
     });
   }
 
   return pdfJsLibPromise;
+}
+
+async function ensurePdfWorker(pdfjs) {
+  if (pdfjs.GlobalWorkerOptions.workerPort) {
+    return pdfjs.GlobalWorkerOptions.workerPort;
+  }
+
+  if (!pdfJsWorkerPromise) {
+    pdfJsWorkerPromise = Promise.resolve(new PdfJsWorker());
+  }
+
+  const worker = await pdfJsWorkerPromise;
+  pdfjs.GlobalWorkerOptions.workerPort = worker;
+  return worker;
 }
 
 function groupPdfItemsIntoLines(items) {
@@ -338,6 +352,7 @@ function inferPdfBlock(line, pageWidth) {
 
 async function extractPdfBlocks(file, layoutMode = '尽量还原') {
   const pdfjs = await loadPdfJs();
+  await ensurePdfWorker(pdfjs);
   const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjs.getDocument({ data }).promise;
   const blocks = [];

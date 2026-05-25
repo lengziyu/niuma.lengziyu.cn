@@ -562,7 +562,7 @@ export default function SideWidgets({
                 <strong>幸运工具：</strong>
                 <span>{fortune.luckyTool}</span>
               </p>
-              <p className="niuma-fortune__favorable">
+              <p>
                 <strong>宜：</strong>
                 <span>{fortune.favorable.join('、')}</span>
               </p>

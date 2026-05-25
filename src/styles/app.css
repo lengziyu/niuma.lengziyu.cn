@@ -1937,13 +1937,6 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   line-height: 1.65;
 }
 
-.niuma-fortune__favorable span {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .niuma-fortune__note {
   margin-top: 8px;
   padding-top: 8px;
