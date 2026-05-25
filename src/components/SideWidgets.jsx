@@ -562,7 +562,7 @@ export default function SideWidgets({
                 <strong>幸运工具：</strong>
                 <span>{fortune.luckyTool}</span>
               </p>
-              <p>
+              <p className="niuma-fortune__favorable">
                 <strong>宜：</strong>
                 <span>{fortune.favorable.join('、')}</span>
               </p>
@@ -573,7 +573,7 @@ export default function SideWidgets({
             </div>
           </div>
 
-          <p className="niuma-fortune__note">{fortune.note} 💪</p>
+          <p className="niuma-fortune__note">{fortune.note}</p>
         </section>
 
         <MiniGame style={gameHeight ? { height: `${gameHeight}px` } : undefined} />

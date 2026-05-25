@@ -21,8 +21,6 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 /* ─── Utilities ─── */
 
 let pdfJsLibPromise = null;
-let pdfWorkerPortPromise = null;
-let pdfWorkerBlobUrl = null;
 
 function formatBytes(value) {
   if (!value) return '0 KB';
@@ -195,117 +193,246 @@ function escapeXml(value) {
 
 async function loadPdfJs() {
   if (!pdfJsLibPromise) {
-    pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs');
+    pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs').then((module) => {
+      module.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+      return module;
+    });
   }
 
   return pdfJsLibPromise;
 }
 
-async function ensurePdfWorkerPort(pdfjs) {
-  if (pdfjs.GlobalWorkerOptions.workerPort) {
-    return pdfjs.GlobalWorkerOptions.workerPort;
-  }
+function groupPdfItemsIntoLines(items) {
+  const lines = [];
 
-  if (!pdfWorkerPortPromise) {
-    pdfWorkerPortPromise = fetch(pdfWorkerUrl)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Worker fetch failed: ${response.status}`);
+  items
+    .filter((item) => 'str' in item)
+    .map((item) => ({
+      ...item,
+      x: item.transform?.[4] ?? 0,
+      y: item.transform?.[5] ?? 0,
+      fontSize: Math.max(
+        Math.abs(item.height || 0),
+        Math.abs(item.transform?.[0] || 0),
+        Math.abs(item.transform?.[3] || 0)
+      )
+    }))
+    .sort((a, b) => {
+      if (Math.abs(b.y - a.y) > 2) {
+        return b.y - a.y;
+      }
+      return a.x - b.x;
+    })
+    .forEach((item) => {
+      const targetLine = lines.find((line) => Math.abs(line.y - item.y) <= 2.5);
+
+      if (targetLine) {
+        targetLine.items.push(item);
+        targetLine.y = (targetLine.y + item.y) / 2;
+        return;
+      }
+
+      lines.push({
+        y: item.y,
+        items: [item]
+      });
+    });
+
+  return lines
+    .map((line) => {
+      const sortedItems = [...line.items].sort((a, b) => a.x - b.x);
+      let text = '';
+      let lastRight = null;
+
+      sortedItems.forEach((item) => {
+        const raw = item.str ?? '';
+        const chunk = raw.replace(/\s+/g, (value) => (value.includes('\u3000') ? '\u3000' : ' '));
+
+        if (!chunk && !item.hasEOL) {
+          return;
         }
 
-        return response.text();
-      })
-      .then((workerSource) => {
-        pdfWorkerBlobUrl = URL.createObjectURL(
-          new Blob([workerSource], { type: 'text/javascript' })
-        );
+        if (lastRight != null && chunk && !/^\s/.test(chunk)) {
+          const gap = item.x - lastRight;
+          if (gap > Math.max(6, item.fontSize * 0.45) && !/\s$/.test(text)) {
+            text += ' ';
+          }
+        }
 
-        return new Worker(pdfWorkerBlobUrl, { type: 'module' });
-      })
-      .catch((error) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-        console.warn('PDF worker blob fallback failed, reverting to direct worker URL.', error);
-        return null;
+        text += chunk;
+        lastRight = Math.max(lastRight ?? item.x, item.x + (item.width || 0));
       });
-  }
 
-  const workerPort = await pdfWorkerPortPromise;
+      const fontSize = sortedItems.reduce((max, item) => Math.max(max, item.fontSize), 0);
+      const minX = Math.min(...sortedItems.map((item) => item.x));
+      const maxX = Math.max(...sortedItems.map((item) => item.x + (item.width || 0)));
+      const bold = sortedItems.some((item) => /bold|medium|black|f2/i.test(item.fontName || ''));
 
-  if (workerPort) {
-    pdfjs.GlobalWorkerOptions.workerPort = workerPort;
-  }
-
-  return workerPort;
+      return {
+        text: text.trim(),
+        fontSize,
+        minX,
+        maxX,
+        centerX: (minX + maxX) / 2,
+        bold
+      };
+    })
+    .filter((line) => line.text);
 }
 
-async function extractPdfParagraphs(file) {
+function inferPdfBlock(line, pageWidth) {
+  const text = line.text;
+  const centered =
+    Math.abs(line.centerX - pageWidth / 2) < pageWidth * 0.09 &&
+    line.minX > pageWidth * 0.12;
+  const isHeaderOrFooter =
+    line.fontSize <= 9.5 &&
+    (/^—\s*\d+\s*—$/.test(text) ||
+      text.includes('操作指引手册') ||
+      text.includes('V1.0'));
+
+  if (isHeaderOrFooter) {
+    return null;
+  }
+
+  if (line.fontSize >= 24) {
+    return { text, kind: 'title', align: 'center', fontSize: 24, bold: true };
+  }
+
+  if (line.fontSize >= 16) {
+    return {
+      text,
+      kind: 'heading1',
+      align: centered ? 'center' : 'left',
+      fontSize: 16,
+      bold: true
+    };
+  }
+
+  if (line.fontSize >= 12 && text.length <= 18) {
+    return {
+      text,
+      kind: 'heading2',
+      align: centered ? 'center' : 'left',
+      fontSize: 12,
+      bold: true
+    };
+  }
+
+  if (/^图\s*\d/.test(text)) {
+    return { text, kind: 'caption', align: 'center', fontSize: 10, bold: false };
+  }
+
+  if (text.startsWith('•')) {
+    return { text, kind: 'bullet', align: 'left', fontSize: 11, bold: false };
+  }
+
+  return {
+    text,
+    kind: 'body',
+    align: centered ? 'center' : 'left',
+    fontSize: 11,
+    bold: line.bold
+  };
+}
+
+async function extractPdfBlocks(file, layoutMode = '尽量还原') {
   const pdfjs = await loadPdfJs();
-  await ensurePdfWorkerPort(pdfjs);
   const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjs.getDocument({ data }).promise;
-  const paragraphs = [];
+  const blocks = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const textContent = await page.getTextContent();
-    let line = '';
+    const viewport = page.getViewport({ scale: 1 });
+    const lines = groupPdfItemsIntoLines(textContent.items);
 
-    textContent.items.forEach((item) => {
-      if (!('str' in item)) {
-        return;
-      }
+    lines.forEach((line) => {
+      const block =
+        layoutMode === '文本可编辑优先'
+          ? {
+              text: line.text,
+              kind: 'body',
+              align: 'left',
+              fontSize: 11,
+              bold: false
+            }
+          : inferPdfBlock(line, viewport.width);
 
-      const chunk = item.str ?? '';
-
-      if (chunk) {
-        line += chunk;
-      }
-
-      if (item.hasEOL) {
-        const normalized = line.trim();
-        if (normalized) {
-          paragraphs.push(normalized);
-        }
-        line = '';
+      if (block) {
+        blocks.push(block);
       }
     });
 
-    const normalized = line.trim();
-    if (normalized) {
-      paragraphs.push(normalized);
+    if (pageNumber < pdf.numPages) {
+      blocks.push({ kind: 'pageBreak' });
     }
 
-    if (pageNumber < pdf.numPages && paragraphs[paragraphs.length - 1] !== '') {
-      paragraphs.push('');
-    }
   }
 
-  return paragraphs.filter((paragraph, index, source) => {
-    if (paragraph !== '') {
-      return true;
-    }
-
-    return index > 0 && source[index - 1] !== '';
-  });
+  return blocks;
 }
 
-async function createDocxFromParagraphs(paragraphs, sourceName) {
+function createParagraphXml(block) {
+  if (block.kind === 'pageBreak') {
+    return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+  }
+
+  const fontHalfPoints = Math.round((block.fontSize || 11) * 2);
+  const alignmentMap = {
+    left: 'left',
+    center: 'center',
+    right: 'right'
+  };
+  const spacing =
+    block.kind === 'title'
+      ? '<w:spacing w:before="0" w:after="240" w:line="360" w:lineRule="auto" />'
+      : block.kind === 'heading1'
+        ? '<w:spacing w:before="120" w:after="140" w:line="320" w:lineRule="auto" />'
+        : block.kind === 'heading2'
+          ? '<w:spacing w:before="80" w:after="80" w:line="300" w:lineRule="auto" />'
+          : '<w:spacing w:before="0" w:after="60" w:line="300" w:lineRule="auto" />';
+  const alignment =
+    block.align && alignmentMap[block.align]
+      ? `<w:jc w:val="${alignmentMap[block.align]}" />`
+      : '';
+  const indent =
+    block.kind === 'bullet'
+      ? '<w:ind w:left="720" w:hanging="360" />'
+      : '';
+  const bold = block.bold ? '<w:b />' : '';
+  const styleId =
+    block.kind === 'title'
+      ? '<w:pStyle w:val="Title" />'
+      : block.kind === 'heading1'
+        ? '<w:pStyle w:val="Heading1" />'
+        : block.kind === 'heading2'
+          ? '<w:pStyle w:val="Heading2" />'
+          : block.kind === 'caption'
+            ? '<w:pStyle w:val="Caption" />'
+            : '';
+
+  return `<w:p><w:pPr>${styleId}${alignment}${indent}${spacing}</w:pPr><w:r><w:rPr>${bold}<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" /><w:lang w:val="zh-CN" /><w:sz w:val="${fontHalfPoints}" /></w:rPr><w:t xml:space="preserve">${escapeXml(block.text)}</w:t></w:r></w:p>`;
+}
+
+async function createDocxFromBlocks(blocks, sourceName) {
   const zip = new JSZip();
-  const safeParagraphs = paragraphs.length
-    ? paragraphs
-    : ['这份 PDF 暂时没有提取到可编辑文本，可能是扫描件或图片版 PDF。'];
+  const safeBlocks = blocks.length
+    ? blocks
+    : [{
+        text: '这份 PDF 暂时没有提取到可编辑文本，可能是扫描件或图片版 PDF。',
+        kind: 'body',
+        align: 'left',
+        fontSize: 11,
+        bold: false
+      }];
   const now = new Date().toISOString();
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
   <w:body>
-    ${safeParagraphs.map((paragraph) => {
-      if (!paragraph) {
-        return '<w:p />';
-      }
-
-      return `<w:p><w:r><w:rPr><w:lang w:val="zh-CN" /></w:rPr><w:t xml:space="preserve">${escapeXml(paragraph)}</w:t></w:r></w:p>`;
-    }).join('')}
+    ${safeBlocks.map((block) => createParagraphXml(block)).join('')}
     <w:sectPr>
       <w:pgSz w:w="11906" w:h="16838" />
       <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0" />
@@ -352,6 +479,63 @@ async function createDocxFromParagraphs(paragraphs, sourceName) {
     <w:rPr>
       <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
       <w:sz w:val="24" />
+      <w:lang w:val="zh-CN" />
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title" />
+    <w:basedOn w:val="Normal" />
+    <w:qFormat />
+    <w:pPr>
+      <w:jc w:val="center" />
+      <w:spacing w:after="240" />
+    </w:pPr>
+    <w:rPr>
+      <w:b />
+      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
+      <w:sz w:val="48" />
+      <w:lang w:val="zh-CN" />
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="Heading 1" />
+    <w:basedOn w:val="Normal" />
+    <w:qFormat />
+    <w:pPr>
+      <w:spacing w:before="120" w:after="140" />
+    </w:pPr>
+    <w:rPr>
+      <w:b />
+      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
+      <w:sz w:val="32" />
+      <w:lang w:val="zh-CN" />
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2">
+    <w:name w:val="Heading 2" />
+    <w:basedOn w:val="Normal" />
+    <w:qFormat />
+    <w:pPr>
+      <w:spacing w:before="80" w:after="80" />
+    </w:pPr>
+    <w:rPr>
+      <w:b />
+      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
+      <w:sz w:val="24" />
+      <w:lang w:val="zh-CN" />
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Caption">
+    <w:name w:val="Caption" />
+    <w:basedOn w:val="Normal" />
+    <w:qFormat />
+    <w:pPr>
+      <w:jc w:val="center" />
+      <w:spacing w:before="40" w:after="80" />
+    </w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
+      <w:sz w:val="20" />
       <w:lang w:val="zh-CN" />
     </w:rPr>
   </w:style>
@@ -849,8 +1033,8 @@ export default function Workbench({ tool }) {
           blob = item.file;
           outputName = item.name.replace(/\.[^.]+$/, '.pdf');
         } else if (tool.id === 'pdf-to-word') {
-          const paragraphs = await extractPdfParagraphs(item.file);
-          blob = await createDocxFromParagraphs(paragraphs, item.name);
+          const blocks = await extractPdfBlocks(item.file, settings.layout || '尽量还原');
+          blob = await createDocxFromBlocks(blocks, item.name);
           outputName = item.name.replace(/\.pdf$/i, '.docx');
         } else {
           // Generic simulation for other file tools
