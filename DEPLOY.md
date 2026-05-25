@@ -31,6 +31,11 @@ rsync -av --delete dist/ /opt/apps/niuma.lengziyu.cn/www/
 
 ```bash
 cd /opt/apps/niuma.lengziyu.cn
+
+# 安装 LibreOffice（高质量 PDF 转 Word 的核心依赖）
+sudo apt install libreoffice-writer fonts-wqy-microhei -y
+
+# 安装 Python 依赖
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -r server/requirements.txt

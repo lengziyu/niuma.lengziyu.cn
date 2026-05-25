@@ -77,6 +77,40 @@ async def save_upload(upload: UploadFile, target: Path) -> None:
 
 
 def convert_editable_open_source(input_path: Path, output_path: Path) -> None:
+    """Use LibreOffice for high-quality PDF to DOCX conversion, fall back to pdf2docx."""
+    import shutil
+    import subprocess
+
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+
+    if soffice:
+        # LibreOffice converts PDF -> DOCX with good layout preservation
+        try:
+            subprocess.run(
+                [
+                    soffice,
+                    "--headless",
+                    "--norestore",
+                    "--convert-to", "docx:MS Word 2007 XML",
+                    "--outdir", str(output_path.parent),
+                    str(input_path),
+                ],
+                capture_output=True,
+                timeout=180,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pass
+
+        # LibreOffice outputs with the input filename stem
+        lo_output = output_path.parent / f"{input_path.stem}.docx"
+        if lo_output.exists() and lo_output.stat().st_size > 0:
+            if lo_output != output_path:
+                lo_output.rename(output_path)
+            normalize_docx_text_fonts(output_path)
+            return
+
+    # Fallback to pdf2docx if LibreOffice is not available or failed
     converter = Converter(str(input_path))
     try:
         converter.convert(str(output_path), start=0, end=None, multi_processing=False)
