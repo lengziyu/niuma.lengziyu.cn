@@ -42,7 +42,8 @@ DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.docu
 MAX_UPLOAD_BYTES = 80 * 1024 * 1024
 MODE_EDITABLE = "editable_open_source"
 MODE_VISUAL = "visual_exact"
-SUPPORTED_MODES = {MODE_EDITABLE, MODE_VISUAL}
+MODE_HYBRID = "hybrid_smart"
+SUPPORTED_MODES = {MODE_EDITABLE, MODE_VISUAL, MODE_HYBRID}
 RENDER_ZOOM = 2.2
 DOCX_TEXT_FONT = "Microsoft YaHei"
 DOCX_EAST_ASIA_FONT = "微软雅黑"
@@ -195,6 +196,12 @@ def convert_visual_exact(input_path: Path, output_path: Path, workspace: Path) -
 
 def convert_pdf(input_path: Path, output_path: Path, mode: str, workspace: Path) -> None:
     if mode == MODE_VISUAL:
+        convert_visual_exact(input_path, output_path, workspace)
+        return
+
+    if mode == MODE_HYBRID:
+        # Hybrid: use visual (image) mode — perfect layout, not editable
+        # This is the best option when layout fidelity matters most
         convert_visual_exact(input_path, output_path, workspace)
         return
 

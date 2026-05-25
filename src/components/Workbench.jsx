@@ -79,7 +79,8 @@ function extensionFromMimeType(mime) {
 
 const PDF_TO_WORD_MODE_BY_LABEL = {
   '文字可编辑版': 'editable_open_source',
-  '版式一比一版': 'visual_exact',
+  '版式还原版': 'visual_exact',
+  '高保真版（图片）': 'hybrid_smart',
   '开源可编辑版': 'editable_open_source',
   '视觉一比一版': 'visual_exact',
   '尽量还原': 'editable_open_source',

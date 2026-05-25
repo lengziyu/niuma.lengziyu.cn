@@ -223,7 +223,7 @@ export const tools = [
         id: 'layout',
         label: '转换方案',
         type: 'segmented',
-        options: ['文字可编辑版', '版式一比一版'],
+        options: ['文字可编辑版', '版式还原版', '高保真版（图片）'],
         defaultValue: '文字可编辑版'
       },
       {
