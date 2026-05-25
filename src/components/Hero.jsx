@@ -136,6 +136,22 @@ export default function Hero({
   return (
     <section className="niuma-home__hero-card">
       <div className="niuma-home__hero-copy">
+        <div className="niuma-home__hero-1920-strip" role="group" aria-label="开工状态快捷操作">
+          <span className="niuma-home__hero-1920-dot" aria-hidden="true" />
+          <strong>今日节奏：轻松高效</strong>
+          <button
+            type="button"
+            onClick={triggerCowEgg}
+          >
+            打气一下
+          </button>
+          <button
+            type="button"
+            onClick={triggerCoffeeEgg}
+          >
+            来杯咖啡
+          </button>
+        </div>
         <p className="niuma-home__hero-greeting">Hi，打工人 👋</p>
         <h1>
           欢迎来到 <span>牛马</span> 百宝箱

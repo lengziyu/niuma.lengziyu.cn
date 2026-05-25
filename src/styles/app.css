@@ -722,6 +722,10 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   padding: 0;
 }
 
+.niuma-home__hero-1920-strip {
+  display: none;
+}
+
 .niuma-home__hero-greeting {
   margin: 0 0 6px;
   color: #26304f;
@@ -3274,6 +3278,153 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 
   .niuma-home__hero-overlay-text--mug {
     font-size: 36px;
+  }
+}
+
+@media (min-width: 1860px) and (max-width: 2060px) {
+  .page--niuma-home .niuma-home__layout {
+    margin-top: 116px;
+  }
+
+  .page--niuma-home .niuma-home__hero-card {
+    --niuma-hero-shift-y: 10px;
+    min-height: clamp(410px, 42vh, 540px);
+    gap: 18px;
+  }
+
+  .page--niuma-home .niuma-home__hero-copy {
+    padding-top: 2px;
+  }
+
+  .page--niuma-home .niuma-home__hero-1920-strip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 7px 12px;
+    border: 1px solid rgba(173, 154, 255, 0.42);
+    border-radius: 999px;
+    background:
+      linear-gradient(130deg, rgba(255, 255, 255, 0.92), rgba(242, 235, 255, 0.82));
+    box-shadow:
+      0 14px 28px rgba(124, 77, 255, 0.13),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .page--niuma-home .niuma-home__hero-1920-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #7c4dff;
+    box-shadow:
+      0 0 0 0 rgba(124, 77, 255, 0.36),
+      0 0 18px rgba(124, 77, 255, 0.42);
+    animation: niuma-hero-1920-ping 1700ms ease-out infinite;
+  }
+
+  .page--niuma-home .niuma-home__hero-1920-strip strong {
+    color: #2a2f4f;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .page--niuma-home .niuma-home__hero-1920-strip button {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid rgba(154, 132, 255, 0.34);
+    border-radius: 999px;
+    background: rgba(248, 243, 255, 0.9);
+    color: #5d49b3;
+    font-size: 13px;
+    font-weight: 700;
+    transition:
+      transform 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease,
+      color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .page--niuma-home .niuma-home__hero-1920-strip button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(124, 77, 255, 0.5);
+    background: rgba(241, 233, 255, 0.95);
+    color: #4f39ac;
+    box-shadow: 0 8px 18px rgba(124, 77, 255, 0.2);
+  }
+
+  .page--niuma-home .niuma-home__hero-1920-strip button:active {
+    transform: translateY(0);
+  }
+
+  .page--niuma-home .niuma-home__hero-greeting {
+    margin-bottom: 10px;
+    font-size: 22px;
+  }
+
+  .page--niuma-home .niuma-home__hero-copy h1 {
+    max-width: 780px;
+  }
+
+  .page--niuma-home .niuma-home__hero-description {
+    max-width: 720px;
+    margin-top: 14px;
+    margin-bottom: 18px;
+    font-size: 17px;
+  }
+
+  .page--niuma-home .niuma-home__hero-illustration {
+    margin-left: -20px;
+  }
+
+  .page--niuma-home .niuma-home__hero-figure {
+    width: min(100%, 710px);
+  }
+
+  .dark .page--niuma-home .niuma-home__hero-1920-strip {
+    border-color: rgba(165, 149, 255, 0.3);
+    background:
+      linear-gradient(130deg, rgba(28, 24, 62, 0.82), rgba(19, 18, 47, 0.84));
+    box-shadow:
+      0 16px 32px rgba(0, 0, 0, 0.36),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .dark .page--niuma-home .niuma-home__hero-1920-strip strong {
+    color: #dad4ff;
+  }
+
+  .dark .page--niuma-home .niuma-home__hero-1920-strip button {
+    border-color: rgba(152, 133, 255, 0.28);
+    background: rgba(66, 52, 126, 0.46);
+    color: #d3c9ff;
+  }
+
+  .dark .page--niuma-home .niuma-home__hero-1920-strip button:hover {
+    border-color: rgba(184, 164, 255, 0.54);
+    background: rgba(92, 71, 170, 0.52);
+    color: #f1ecff;
+  }
+}
+
+@keyframes niuma-hero-1920-ping {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(124, 77, 255, 0.38),
+      0 0 14px rgba(124, 77, 255, 0.48);
+  }
+
+  70% {
+    box-shadow:
+      0 0 0 8px rgba(124, 77, 255, 0),
+      0 0 18px rgba(124, 77, 255, 0.3);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(124, 77, 255, 0),
+      0 0 14px rgba(124, 77, 255, 0.44);
   }
 }
 
