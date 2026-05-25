@@ -16,7 +16,7 @@ import {
   getHomeToolCatalog,
   heroHotTags
 } from '../data/home';
-import { homeQuotes, officeFortunes } from '../data/quotes';
+import { createOfficeFortune, homeQuotes } from '../data/quotes';
 
 function pickAnotherIndex(length, currentIndex) {
   if (length <= 1) {
@@ -38,7 +38,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
-  const [fortuneIndex, setFortuneIndex] = useState(0);
+  const [fortune, setFortune] = useState(() => createOfficeFortune());
   const [quoteCollapsed, setQuoteCollapsed] = useState(false);
   const [relaxOpen, setRelaxOpen] = useState(false);
   const [relaxCountdown, setRelaxCountdown] = useState(10);
@@ -122,7 +122,7 @@ export default function HomePage() {
       return;
     }
 
-    setFortuneIndex((current) => pickAnotherIndex(officeFortunes.length, current));
+    setFortune((current) => createOfficeFortune(current));
   }
 
   const relaxModal =
@@ -269,14 +269,10 @@ export default function HomePage() {
             <aside className="niuma-home__sidebar">
               <SideWidgets
                 collapsed={quoteCollapsed}
-                fortune={officeFortunes[fortuneIndex]}
+                fortune={fortune}
                 quote={homeQuotes[quoteIndex]}
                 onAction={handleCornerAction}
-                onNextFortune={() =>
-                  setFortuneIndex((current) =>
-                    pickAnotherIndex(officeFortunes.length, current)
-                  )
-                }
+                onNextFortune={() => setFortune((current) => createOfficeFortune(current))}
                 onNextQuote={() =>
                   setQuoteIndex((current) => pickAnotherIndex(homeQuotes.length, current))
                 }
