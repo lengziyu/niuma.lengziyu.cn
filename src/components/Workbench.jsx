@@ -21,6 +21,8 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 /* ─── Utilities ─── */
 
 let pdfJsLibPromise = null;
+let pdfWorkerPortPromise = null;
+let pdfWorkerBlobUrl = null;
 
 function formatBytes(value) {
   if (!value) return '0 KB';
@@ -193,17 +195,52 @@ function escapeXml(value) {
 
 async function loadPdfJs() {
   if (!pdfJsLibPromise) {
-    pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs').then((module) => {
-      module.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-      return module;
-    });
+    pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs');
   }
 
   return pdfJsLibPromise;
 }
 
+async function ensurePdfWorkerPort(pdfjs) {
+  if (pdfjs.GlobalWorkerOptions.workerPort) {
+    return pdfjs.GlobalWorkerOptions.workerPort;
+  }
+
+  if (!pdfWorkerPortPromise) {
+    pdfWorkerPortPromise = fetch(pdfWorkerUrl)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Worker fetch failed: ${response.status}`);
+        }
+
+        return response.text();
+      })
+      .then((workerSource) => {
+        pdfWorkerBlobUrl = URL.createObjectURL(
+          new Blob([workerSource], { type: 'text/javascript' })
+        );
+
+        return new Worker(pdfWorkerBlobUrl, { type: 'module' });
+      })
+      .catch((error) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+        console.warn('PDF worker blob fallback failed, reverting to direct worker URL.', error);
+        return null;
+      });
+  }
+
+  const workerPort = await pdfWorkerPortPromise;
+
+  if (workerPort) {
+    pdfjs.GlobalWorkerOptions.workerPort = workerPort;
+  }
+
+  return workerPort;
+}
+
 async function extractPdfParagraphs(file) {
   const pdfjs = await loadPdfJs();
+  await ensurePdfWorkerPort(pdfjs);
   const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjs.getDocument({ data }).promise;
   const paragraphs = [];
