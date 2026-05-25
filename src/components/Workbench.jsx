@@ -78,6 +78,8 @@ function extensionFromMimeType(mime) {
 }
 
 const PDF_TO_WORD_MODE_BY_LABEL = {
+  '文字可编辑版': 'editable_open_source',
+  '版式一比一版': 'visual_exact',
   '开源可编辑版': 'editable_open_source',
   '视觉一比一版': 'visual_exact',
   '尽量还原': 'editable_open_source',
@@ -701,7 +703,7 @@ export default function Workbench({ tool }) {
           blob = item.file;
           outputName = item.name.replace(/\.[^.]+$/, '.pdf');
         } else if (tool.id === 'pdf-to-word') {
-          blob = await convertPdfToWordOnServer(item.file, settings.layout || '开源可编辑版');
+          blob = await convertPdfToWordOnServer(item.file, settings.layout || '文字可编辑版');
           outputName = item.name.replace(/\.pdf$/i, '.docx');
         } else {
           // Generic simulation for other file tools

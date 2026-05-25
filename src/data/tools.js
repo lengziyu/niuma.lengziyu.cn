@@ -223,8 +223,8 @@ export const tools = [
         id: 'layout',
         label: '转换方案',
         type: 'segmented',
-        options: ['开源可编辑版', '视觉一比一版'],
-        defaultValue: '开源可编辑版'
+        options: ['文字可编辑版', '版式一比一版'],
+        defaultValue: '文字可编辑版'
       },
       {
         id: 'language',

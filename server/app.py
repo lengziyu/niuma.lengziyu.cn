@@ -1,6 +1,8 @@
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 from urllib.parse import quote
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import fitz
 from docx import Document
@@ -42,6 +44,10 @@ MODE_EDITABLE = "editable_open_source"
 MODE_VISUAL = "visual_exact"
 SUPPORTED_MODES = {MODE_EDITABLE, MODE_VISUAL}
 RENDER_ZOOM = 2.2
+DOCX_TEXT_FONT = "Microsoft YaHei"
+DOCX_EAST_ASIA_FONT = "微软雅黑"
+RFONTS_RE = re.compile(rb"<w:rFonts\b[^>]*/>")
+LANG_RE = re.compile(rb"<w:lang\b[^>]*/>")
 
 app = FastAPI(title="Niuma conversion service")
 
@@ -76,6 +82,41 @@ def convert_editable_open_source(input_path: Path, output_path: Path) -> None:
         converter.convert(str(output_path), start=0, end=None, multi_processing=False)
     finally:
         converter.close()
+
+    normalize_docx_text_fonts(output_path)
+
+
+def normalize_word_xml_fonts(content: bytes) -> bytes:
+    font_decl = (
+        f'<w:rFonts w:ascii="{DOCX_TEXT_FONT}" '
+        f'w:hAnsi="{DOCX_TEXT_FONT}" '
+        f'w:eastAsia="{DOCX_EAST_ASIA_FONT}" '
+        f'w:cs="{DOCX_TEXT_FONT}"/>'
+    ).encode("utf-8")
+    lang_decl = b'<w:lang w:val="zh-CN" w:eastAsia="zh-CN" w:bidi="zh-CN"/>'
+
+    content = RFONTS_RE.sub(font_decl, content)
+    content = LANG_RE.sub(lang_decl, content)
+    return content.replace(b"MicrosoftYaHei", DOCX_TEXT_FONT.encode("utf-8"))
+
+
+def normalize_docx_text_fonts(docx_path: Path) -> None:
+    normalized_path = docx_path.with_suffix(".normalized.docx")
+
+    with ZipFile(docx_path, "r") as source, ZipFile(normalized_path, "w", ZIP_DEFLATED) as target:
+        for item in source.infolist():
+            content = source.read(item.filename)
+
+            if (
+                item.filename.startswith("word/")
+                and item.filename.endswith(".xml")
+                and not item.filename.startswith("word/_rels/")
+            ):
+                content = normalize_word_xml_fonts(content)
+
+            target.writestr(item, content)
+
+    normalized_path.replace(docx_path)
 
 
 def configure_section(section, width_pt: float, height_pt: float) -> None:
