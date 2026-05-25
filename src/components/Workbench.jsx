@@ -16,6 +16,7 @@ import {
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import UPNG from 'upng-js';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 /* ─── Utilities ─── */
 
@@ -193,10 +194,7 @@ function escapeXml(value) {
 async function loadPdfJs() {
   if (!pdfJsLibPromise) {
     pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs').then((module) => {
-      module.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url
-      ).toString();
+      module.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
       return module;
     });
   }
@@ -206,7 +204,7 @@ async function loadPdfJs() {
 
 async function extractPdfParagraphs(file) {
   const pdfjs = await loadPdfJs();
-  const data = await file.arrayBuffer();
+  const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjs.getDocument({ data }).promise;
   const paragraphs = [];
 
@@ -833,7 +831,8 @@ export default function Workbench({ tool }) {
           outputName,
           resultSize: blob?.size ?? item.originSize
         } : f));
-      } catch {
+      } catch (error) {
+        console.error(`[${tool.id}] process failed for ${item.name}`, error);
         setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'error' } : f));
       }
     }
