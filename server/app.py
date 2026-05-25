@@ -9,8 +9,31 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
-from pdf2docx import Converter
 from starlette.concurrency import run_in_threadpool
+
+
+def ensure_pymupdf_rect_compat() -> None:
+    if hasattr(fitz.Rect, "get_area"):
+        return
+
+    def get_area(self, unit: str = "px") -> float:
+        width = max(0.0, float(self.x1) - float(self.x0))
+        height = max(0.0, float(self.y1) - float(self.y0))
+        area = width * height
+        factors = {
+            "px": 1.0,
+            "in": 1 / (72 * 72),
+            "cm": (2.54 / 72) ** 2,
+            "mm": (25.4 / 72) ** 2
+        }
+        return area * factors.get(unit, 1.0)
+
+    fitz.Rect.get_area = get_area
+
+
+ensure_pymupdf_rect_compat()
+
+from pdf2docx import Converter
 
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
