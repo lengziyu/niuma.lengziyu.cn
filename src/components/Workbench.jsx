@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import UPNG from 'upng-js';
 
 /* ─── Utilities ─── */
 
@@ -42,6 +43,40 @@ function loadImage(file) {
   });
 }
 
+function pngColorCountFromQuality(quality) {
+  const safeQuality = Math.max(1, Math.min(100, quality));
+
+  if (safeQuality >= 96) return 0;
+  if (safeQuality >= 88) return 256;
+  if (safeQuality >= 76) return 192;
+  if (safeQuality >= 64) return 128;
+  if (safeQuality >= 52) return 96;
+  if (safeQuality >= 40) return 64;
+  if (safeQuality >= 28) return 48;
+  return 32;
+}
+
+function compressPngWithUpng(canvas, quality) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return null;
+  }
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const colorCount = pngColorCountFromQuality(quality);
+  const encoded = UPNG.encode([imageData.data.buffer], canvas.width, canvas.height, colorCount);
+
+  return new Blob([encoded], { type: 'image/png' });
+}
+
+function extensionFromMimeType(mime) {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/avif') return 'avif';
+  return null;
+}
+
 function compressImage(file, quality, targetFormat) {
   return new Promise(async (resolve) => {
     const img = await loadImage(file);
@@ -56,11 +91,8 @@ function compressImage(file, quality, targetFormat) {
     let mime;
     if (targetFormat && mimeMap[targetFormat]) {
       mime = mimeMap[targetFormat];
-    } else if (file.type === 'image/png') {
-      // PNG is lossless - convert to WebP or JPEG for actual compression
-      mime = 'image/webp';
     } else {
-      mime = file.type || 'image/jpeg';
+      mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
     }
 
     // For JPEG/WebP, fill white background (in case of transparency)
@@ -71,8 +103,17 @@ function compressImage(file, quality, targetFormat) {
 
     ctx.drawImage(img, 0, 0);
 
-    // PNG doesn't support quality param, others do
-    const q = mime === 'image/png' ? undefined : quality / 100;
+    if (mime === 'image/png') {
+      const pngBlob = compressPngWithUpng(canvas, quality);
+      if (pngBlob && pngBlob.size < file.size) {
+        resolve(pngBlob);
+      } else {
+        resolve(file);
+      }
+      return;
+    }
+
+    const q = quality / 100;
 
     canvas.toBlob((blob) => {
       // If compressed result is larger than original, return original
@@ -589,8 +630,8 @@ export default function Workbench({ tool }) {
         if (isImageCompress) {
           const fmt = outputFormat === '保持原格式' ? null : outputFormat;
           blob = await compressImage(item.file, qualityValue, fmt);
-          if (fmt) {
-            const ext = fmt.toLowerCase() === 'jpg' ? 'jpg' : fmt.toLowerCase();
+          const ext = extensionFromMimeType(blob?.type);
+          if (ext) {
             outputName = item.name.replace(/\.[^.]+$/, `.${ext}`);
           }
         } else if (tool.id === 'image-resize') {

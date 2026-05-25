@@ -111,6 +111,7 @@ function GlobalHeader({ setTheme, theme }) {
   const location = useLocation();
   const pathname = location.pathname;
   const isHomeRoute = pathname === '/' || pathname === '/home-1920';
+  const isToolDetailRoute = /^\/tools\/[^/]+$/.test(pathname);
   const activeKey =
     pathname === '/favorites'
       ? 'favorites'
@@ -122,6 +123,10 @@ function GlobalHeader({ setTheme, theme }) {
     if (key === 'home' && isHomeRoute) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  }
+
+  if (isToolDetailRoute) {
+    return null;
   }
 
   return (

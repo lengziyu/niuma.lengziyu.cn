@@ -34,7 +34,7 @@ export const cornerActions = [
 
 export const miniGameBoxes = [
   { type: 'pdf', label: 'PDF文档' },
-  { type: 'image', label: 'PNG图片' },
+  { type: 'image', label: 'IMG图片' },
   { type: 'word', label: 'DOC文档' },
   { type: 'sheet', label: 'XLS表格' }
 ];
@@ -42,8 +42,15 @@ export const miniGameBoxes = [
 export const miniGameFilePool = [
   { type: 'pdf', label: 'PDF' },
   { type: 'image', label: 'PNG' },
+  { type: 'image', label: 'JPG' },
+  { type: 'image', label: 'WEBP' },
   { type: 'word', label: 'DOC' },
-  { type: 'sheet', label: 'XLS' }
+  { type: 'word', label: 'DOCX' },
+  { type: 'word', label: 'Word' },
+  { type: 'sheet', label: 'XLS' },
+  { type: 'sheet', label: 'XLSX' },
+  { type: 'sheet', label: 'CSV' },
+  { type: 'sheet', label: 'Excel' }
 ];
 
 export const miniGameTips = {

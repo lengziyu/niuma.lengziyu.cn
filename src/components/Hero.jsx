@@ -1,6 +1,6 @@
 import { animate } from 'animejs';
 import { Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 const cowLines = [
   '今天也要轻松开工～',
@@ -29,22 +29,6 @@ function pickRandom(items, currentValue) {
   return next;
 }
 
-function AnimatedBubbleLine({ text, className = '' }) {
-  return (
-    <span className={`niuma-home__hero-bubble-line ${className}`.trim()}>
-      {Array.from(text).map((char, index) => (
-        <span
-          aria-hidden="true"
-          className="niuma-home__hero-bubble-char"
-          key={`${text}-${index}-${char}`}
-        >
-          {char}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 export default function Hero({
   hotTags = [],
   onHotSearch,
@@ -55,11 +39,10 @@ export default function Hero({
   const [egg, setEgg] = useState(null);
   const [cowLine, setCowLine] = useState(cowLines[0]);
   const [toolTip, setToolTip] = useState(hiddenTools[0]);
-  const bubbleCopyRef = useRef(null);
-  const bubbleClipRef = useRef(null);
-  const bubbleSweepRef = useRef(null);
-  const bubbleFxCanvasRef = useRef(null);
-  const bubbleFxWrapRef = useRef(null);
+  const bubbleMotionGroupRef = useRef(null);
+  const bubbleTextGroupRef = useRef(null);
+  const bubbleRevealRectRef = useRef(null);
+  const bubbleClipId = useId().replace(/:/g, '');
 
   const figureClassName = useMemo(
     () => `niuma-home__hero-figure ${egg ? `is-${egg}-active` : ''}`,
@@ -77,250 +60,62 @@ export default function Hero({
   }, [egg]);
 
   useEffect(() => {
-    const bubbleCopy = bubbleCopyRef.current;
-    const bubbleClip = bubbleClipRef.current;
-    const bubbleSweep = bubbleSweepRef.current;
+    const motionGroup = bubbleMotionGroupRef.current;
+    const textGroup = bubbleTextGroupRef.current;
+    const revealRect = bubbleRevealRectRef.current;
 
-    if (!bubbleCopy || !bubbleClip || !bubbleSweep || typeof window === 'undefined') {
+    if (!motionGroup || !textGroup || !revealRect || typeof window === 'undefined') {
       return undefined;
     }
 
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const chars = Array.from(
-      bubbleCopy.querySelectorAll('.niuma-home__hero-bubble-char, .niuma-home__hero-bubble-heart')
-    );
-    const fullWidth = Math.round(bubbleCopy.getBoundingClientRect().width);
+    const textBounds = textGroup.getBBox();
+    const fullWidth = Math.ceil(textBounds.width + 18);
+    const clipX = Math.floor(textBounds.x - 8);
+    const clipY = Math.floor(textBounds.y - 8);
+    const clipHeight = Math.ceil(textBounds.height + 16);
+    const motionBase = 'translate(1238 218) rotate(8)';
     const animations = [];
-    let sheenTimer = 0;
-    let cancelled = false;
 
-    bubbleClip.style.width = mediaQuery.matches ? `${fullWidth}px` : '0px';
-    bubbleCopy.style.opacity = mediaQuery.matches ? '1' : '0';
-    bubbleCopy.style.transform = mediaQuery.matches ? 'rotate(8deg)' : 'translate3d(-14px, 0, 0) rotate(8deg)';
-    bubbleSweep.style.opacity = mediaQuery.matches ? '0' : '0';
-    bubbleSweep.style.transform = `translate3d(${-Math.round(fullWidth * 0.65)}px, 0, 0)`;
+    revealRect.setAttribute('x', String(clipX));
+    revealRect.setAttribute('y', String(clipY));
+    revealRect.setAttribute('height', String(clipHeight));
+    revealRect.setAttribute('rx', '18');
+    revealRect.setAttribute('width', mediaQuery.matches ? String(fullWidth) : '0');
 
-    chars.forEach((char) => {
-      char.style.opacity = mediaQuery.matches ? '1' : '0';
-      char.style.transform = mediaQuery.matches ? 'translate3d(0, 0, 0) scale(1)' : 'translate3d(-18px, 0, 0) scale(0.94)';
-    });
+    motionGroup.style.opacity = mediaQuery.matches ? '1' : '0';
+    motionGroup.setAttribute('transform', mediaQuery.matches ? motionBase : `${motionBase} translate(-18 0)`);
 
     if (mediaQuery.matches) {
       return undefined;
     }
 
+    const revealState = { width: 0, offset: -18 };
     animations.push(
-      animate(bubbleCopy, {
+      animate(motionGroup, {
         opacity: [0, 1],
-        translateX: [-14, 0],
-        duration: 560,
+        duration: 520,
         ease: 'out(4)'
       })
     );
-
     animations.push(
-      animate(bubbleClip, {
+      animate(revealState, {
         width: [0, fullWidth],
-        duration: 900,
-        ease: 'out(4)'
-      })
-    );
-
-    animations.push(
-      animate(chars, {
-        opacity: [0, 1],
-        translateX: [-18, 0],
-        scale: [0.94, 1],
-        delay: (_, index) => 120 + index * 42,
-        duration: 620,
-        ease: 'out(4)'
-      })
-    );
-
-    function runSheen(delay = 320) {
-      sheenTimer = window.setTimeout(() => {
-        if (cancelled) {
-          return;
+        offset: [-18, 0],
+        duration: 860,
+        ease: 'out(4)',
+        onUpdate: () => {
+          revealRect.setAttribute('width', String(revealState.width));
+          motionGroup.setAttribute(
+            'transform',
+            `${motionBase} translate(${revealState.offset} 0)`
+          );
         }
-
-        const travel = Math.round(fullWidth * 1.42);
-        animations.push(
-          animate(bubbleSweep, {
-            opacity: [0, 0.9, 0],
-            translateX: [-Math.round(fullWidth * 0.68), travel],
-            duration: 980,
-            ease: 'inOutSine',
-            onComplete: () => {
-              if (!cancelled) {
-                runSheen(3600);
-              }
-            }
-          })
-        );
-      }, delay);
-    }
-
-    runSheen();
+      })
+    );
 
     return () => {
-      cancelled = true;
-      if (sheenTimer) {
-        window.clearTimeout(sheenTimer);
-      }
       animations.forEach((animation) => animation.cancel?.());
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = bubbleFxCanvasRef.current;
-    const fxWrap = bubbleFxWrapRef.current;
-
-    if (!canvas || !fxWrap) {
-      return undefined;
-    }
-
-    let cleanupScene = () => {};
-    let disposed = false;
-
-    async function setupScene() {
-      const THREE = await import('three');
-
-      if (disposed) {
-        return;
-      }
-
-      const renderer = new THREE.WebGLRenderer({
-        alpha: true,
-        antialias: true,
-        canvas
-      });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.setClearColor(0x000000, 0);
-
-      const scene = new THREE.Scene();
-      const camera = new THREE.OrthographicCamera(-1.5, 1.5, 1, -1, 0.1, 10);
-      camera.position.z = 4;
-
-      const group = new THREE.Group();
-      scene.add(group);
-
-      const haloMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.16
-      });
-      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.78, 48), haloMaterial);
-      halo.scale.set(1.24, 0.48, 1);
-      group.add(halo);
-
-      const streakMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.2
-      });
-      const streak = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 1.92), streakMaterial);
-      streak.rotation.z = 0.52;
-      group.add(streak);
-
-      const sparkMaterials = [];
-      const sparks = Array.from({ length: 7 }, (_, index) => {
-        const material = new THREE.MeshBasicMaterial({
-          color: index % 2 === 0 ? 0xffffff : 0xffdd75,
-          transparent: true,
-          opacity: 0.45
-        });
-        sparkMaterials.push(material);
-
-        const mesh = new THREE.Mesh(new THREE.CircleGeometry(index === 0 ? 0.06 : 0.038, 24), material);
-        mesh.userData = {
-          baseX: -0.86 + index * 0.28,
-          baseY: index % 2 === 0 ? 0.08 : -0.08,
-          drift: 0.04 + index * 0.008,
-          speed: 0.7 + index * 0.14,
-          phase: index * 0.72
-        };
-        group.add(mesh);
-        return mesh;
-      });
-
-      function applyThemeColors() {
-        const style = getComputedStyle(fxWrap);
-        const primary = style.getPropertyValue('--hero-bubble-fx-primary').trim() || '#6f7cff';
-        const secondary = style.getPropertyValue('--hero-bubble-fx-secondary').trim() || '#ffd86b';
-        const glow = style.getPropertyValue('--hero-bubble-fx-glow').trim() || '#ffffff';
-
-        halo.material.color.set(primary);
-        streak.material.color.set(glow);
-        sparks.forEach((spark, index) => {
-          spark.material.color.set(index % 2 === 0 ? glow : secondary);
-        });
-      }
-
-      function resize() {
-        const rect = fxWrap.getBoundingClientRect();
-        renderer.setSize(Math.max(1, Math.round(rect.width)), Math.max(1, Math.round(rect.height)), false);
-        renderer.render(scene, camera);
-      }
-
-      let rafId = 0;
-      const start = performance.now();
-
-      function renderFrame(now) {
-        const elapsed = (now - start) / 1000;
-        halo.material.opacity = 0.11 + Math.sin(elapsed * 1.6) * 0.035;
-        halo.scale.x = 1.22 + Math.sin(elapsed * 1.1) * 0.05;
-        halo.scale.y = 0.46 + Math.cos(elapsed * 1.1) * 0.04;
-
-        streak.position.x = -1.5 + ((elapsed * 0.58) % 1) * 3.1;
-        streak.position.y = -0.03 + Math.sin(elapsed * 0.9) * 0.06;
-        streak.material.opacity = 0.09 + Math.sin(elapsed * 2.1) * 0.04;
-
-        sparks.forEach((spark) => {
-          const { baseX, baseY, drift, speed, phase } = spark.userData;
-          spark.position.x = baseX + Math.sin(elapsed * speed + phase) * drift;
-          spark.position.y = baseY + Math.cos(elapsed * (speed + 0.18) + phase) * (drift * 1.8);
-          const scale = 0.92 + Math.sin(elapsed * (speed + 0.4) + phase) * 0.18;
-          spark.scale.setScalar(scale);
-          spark.material.opacity = 0.18 + Math.abs(Math.sin(elapsed * (speed + 0.22) + phase)) * 0.42;
-        });
-
-        renderer.render(scene, camera);
-        rafId = window.requestAnimationFrame(renderFrame);
-      }
-
-      applyThemeColors();
-      resize();
-      rafId = window.requestAnimationFrame(renderFrame);
-
-      const resizeObserver = new ResizeObserver(resize);
-      resizeObserver.observe(fxWrap);
-      const themeObserver = new MutationObserver(applyThemeColors);
-      themeObserver.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class', 'data-theme']
-      });
-
-      cleanupScene = () => {
-        window.cancelAnimationFrame(rafId);
-        resizeObserver.disconnect();
-        themeObserver.disconnect();
-        halo.geometry.dispose();
-        halo.material.dispose();
-        streak.geometry.dispose();
-        streak.material.dispose();
-        sparks.forEach((spark) => {
-          spark.geometry.dispose();
-          spark.material.dispose();
-        });
-        renderer.dispose();
-      };
-    }
-
-    void setupScene();
-
-    return () => {
-      disposed = true;
-      cleanupScene();
     };
   }, []);
 
@@ -396,15 +191,38 @@ export default function Hero({
             preserveAspectRatio="xMidYMid meet"
             viewBox="0 0 1536 1024"
           >
+            <defs>
+              <clipPath id={bubbleClipId}>
+                <rect ref={bubbleRevealRectRef} />
+              </clipPath>
+            </defs>
             <g className="niuma-home__hero-sparkles">
               <path
                 d="M1127 182c18 0 27 14 30 30 3-16 12-30 30-30-18 0-27-14-30-30-3 16-12 30-30 30Z"
                 fill="#FFD77A"
+                transform="translate(-26 0)"
               />
               <path
                 d="M1018 536c14 0 21 11 23 23 2-12 9-23 23-23-14 0-21-11-23-23-2 12-9 23-23 23Z"
                 fill="#FFC96B"
               />
+            </g>
+
+            <g
+              clipPath={`url(#${bubbleClipId})`}
+              ref={bubbleMotionGroupRef}
+              transform="translate(1238 218) rotate(8)"
+            >
+              <g ref={bubbleTextGroupRef}>
+                <text
+                  className="niuma-home__hero-overlay-text niuma-home__hero-overlay-text--bubble"
+                  textAnchor="middle"
+                >
+                  <tspan x="0" y="0">今天也要</tspan>
+                  <tspan x="0" dy="76">轻松开工!</tspan>
+                  <tspan className="niuma-home__hero-overlay-heart" dx="16" dy="0">❤</tspan>
+                </text>
+              </g>
             </g>
 
             <g transform="translate(860 667) rotate(4)">
@@ -413,30 +231,6 @@ export default function Hero({
               </text>
             </g>
           </svg>
-
-          <div className="niuma-home__hero-bubble-copy" ref={bubbleCopyRef}>
-            <span aria-hidden="true" className="niuma-home__hero-bubble-fx-wrap" ref={bubbleFxWrapRef}>
-              <canvas className="niuma-home__hero-bubble-fx" ref={bubbleFxCanvasRef} />
-            </span>
-            <div className="niuma-home__hero-bubble-copy-clip" ref={bubbleClipRef}>
-              <span aria-hidden="true" className="niuma-home__hero-bubble-sweep" ref={bubbleSweepRef} />
-              <div className="niuma-home__hero-bubble-copy-inner">
-                <AnimatedBubbleLine text="今天也要" />
-                <span className="niuma-home__hero-bubble-line niuma-home__hero-bubble-line--second">
-                  {Array.from('轻松开工!').map((char, index) => (
-                    <span
-                      aria-hidden="true"
-                      className="niuma-home__hero-bubble-char"
-                      key={`second-${index}-${char}`}
-                    >
-                      {char}
-                    </span>
-                  ))}
-                  <span aria-hidden="true" className="niuma-home__hero-bubble-heart">❤</span>
-                </span>
-              </div>
-            </div>
-          </div>
 
           <button
             aria-label="点击小牛"

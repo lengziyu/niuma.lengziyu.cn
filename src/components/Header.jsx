@@ -18,6 +18,7 @@ export default function Header({
   hidesBrand
 }) {
   const { segmentedRef, indicatorRef, updateIndicator } = useSegmentedIndicator();
+  const hasAnimatedOnMountRef = React.useRef(false);
 
   const iconMap = {
     home: HomeNavIcon,
@@ -39,6 +40,11 @@ export default function Header({
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     if (mediaQuery.matches) {
+      return undefined;
+    }
+
+    if (!hasAnimatedOnMountRef.current) {
+      hasAnimatedOnMountRef.current = true;
       return undefined;
     }
 

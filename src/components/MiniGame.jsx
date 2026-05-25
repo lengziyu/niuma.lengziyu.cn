@@ -38,14 +38,14 @@ const TYPE_ART = {
   },
   image: {
     shortLabel: 'PNG',
-    bucketLabel: 'PNG',
+    bucketLabel: 'IMG',
     primary: '#8f6ff2',
     secondary: '#c2a6ff',
     deep: '#6847c7',
     soft: '#f5efff'
   },
   word: {
-    shortLabel: 'DOC',
+    shortLabel: 'Word',
     bucketLabel: 'DOC',
     primary: '#4c8dff',
     secondary: '#91baff',
@@ -53,7 +53,7 @@ const TYPE_ART = {
     soft: '#eef4ff'
   },
   sheet: {
-    shortLabel: 'XLS',
+    shortLabel: 'Excel',
     bucketLabel: 'XLS',
     primary: '#57be67',
     secondary: '#95dda0',
@@ -61,6 +61,34 @@ const TYPE_ART = {
     soft: '#effff2'
   }
 };
+
+function getLabelMetrics(text, surface = 'file') {
+  const length = String(text || '').length;
+
+  if (surface === 'bin') {
+    if (length <= 3) {
+      return { fontSize: 17, letterSpacing: '0.02em', y: 66 };
+    }
+    if (length === 4) {
+      return { fontSize: 15, letterSpacing: '0.01em', y: 66 };
+    }
+    if (length === 5) {
+      return { fontSize: 13, letterSpacing: '0', y: 66 };
+    }
+    return { fontSize: 11, letterSpacing: '-0.01em', y: 66 };
+  }
+
+  if (length <= 3) {
+    return { fontSize: 25, letterSpacing: '0.01em', y: 50 };
+  }
+  if (length === 4) {
+    return { fontSize: 20, letterSpacing: '0', y: 50 };
+  }
+  if (length === 5) {
+    return { fontSize: 17, letterSpacing: '-0.01em', y: 50 };
+  }
+  return { fontSize: 14, letterSpacing: '-0.015em', y: 50 };
+}
 
 function randomBetween(min, max) {
   return Math.round(Math.random() * (max - min) + min);
@@ -149,9 +177,7 @@ function getResultCopy(score) {
 function MiniFileArt({ type, label }) {
   const art = TYPE_ART[type] ?? TYPE_ART.pdf;
   const title = label || art.shortLabel;
-  const isImage = type === 'image';
-  const isSheet = type === 'sheet';
-  const isWord = type === 'word';
+  const badgeMetrics = getLabelMetrics(title, 'file');
   const gradientId = React.useId().replace(/:/g, '');
 
   return (
@@ -182,58 +208,25 @@ function MiniFileArt({ type, label }) {
       <path d="M54 9v15.5c0 2.5 1.8 4.3 4.2 4.3H68" fill="none" stroke="#fff" strokeOpacity="0.45" strokeWidth="1.6" />
       <path d="M16 15c8-4.5 28-3.4 39.4 0" fill="none" stroke="#fff" strokeOpacity="0.22" strokeWidth="4" strokeLinecap="round" />
 
-      {isImage ? (
-        <>
-          <circle cx="50" cy="30" r="4.2" fill="#fff" fillOpacity="0.9" />
-          <path d="M20 55 31 41l8 8 7-7 12 13H20Z" fill="#fff" fillOpacity="0.88" />
-        </>
-      ) : isSheet ? (
-        <text
-          x="38"
-          y="52"
-          fill="#fff"
-          fontFamily="Inter, PingFang SC, sans-serif"
-          fontSize="30"
-          fontWeight="800"
-          textAnchor="middle"
-        >
-          X
-        </text>
-      ) : isWord ? (
-        <>
-          <text
-            x="36"
-            y="50"
-            fill="#fff"
-            fontFamily="Inter, PingFang SC, sans-serif"
-            fontSize="28"
-            fontWeight="800"
-            textAnchor="middle"
-          >
-            W
-          </text>
-          <circle cx="53" cy="38" r="1.9" fill="#fff" fillOpacity="0.74" />
-          <circle cx="58" cy="38" r="1.9" fill="#fff" fillOpacity="0.74" />
-        </>
-      ) : (
-        <text
-          x="38"
-          y="50"
-          fill="#fff"
-          fontFamily="Inter, PingFang SC, sans-serif"
-          fontSize="25"
-          fontWeight="800"
-          textAnchor="middle"
-        >
-          {title}
-        </text>
-      )}
+      <text
+        x="39"
+        y={badgeMetrics.y}
+        fill="#fff"
+        fontFamily="Inter, PingFang SC, sans-serif"
+        fontSize={badgeMetrics.fontSize}
+        fontWeight="800"
+        letterSpacing={badgeMetrics.letterSpacing}
+        textAnchor="middle"
+      >
+        {title}
+      </text>
     </svg>
   );
 }
 
 function MiniBinArt({ type, label }) {
   const art = TYPE_ART[type] ?? TYPE_ART.pdf;
+  const binMetrics = getLabelMetrics(art.bucketLabel, 'bin');
   const gradientId = React.useId().replace(/:/g, '');
 
   return (
@@ -276,11 +269,12 @@ function MiniBinArt({ type, label }) {
       <path d="M23 37h62" stroke="#fff" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" />
       <text
         x="54"
-        y="66"
+        y={binMetrics.y}
         fill="#2d3455"
         fontFamily="Inter, PingFang SC, sans-serif"
-        fontSize="17"
+        fontSize={binMetrics.fontSize}
         fontWeight="800"
+        letterSpacing={binMetrics.letterSpacing}
         textAnchor="middle"
       >
         {art.bucketLabel}
