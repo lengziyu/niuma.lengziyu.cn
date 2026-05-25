@@ -18,7 +18,7 @@ git clone <你的仓库地址> niuma.lengziyu.cn
 cd /opt/apps/niuma.lengziyu.cn
 ```
 
-### 1.2 安装依赖并构建
+### 1.2 安装前端依赖并构建
 
 ```bash
 npm ci
@@ -27,7 +27,39 @@ mkdir -p /opt/apps/niuma.lengziyu.cn/www
 rsync -av --delete dist/ /opt/apps/niuma.lengziyu.cn/www/
 ```
 
-### 1.3 创建 Nginx 配置（可直接复制粘贴）
+### 1.3 安装 PDF 转 Word 服务
+
+```bash
+cd /opt/apps/niuma.lengziyu.cn
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r server/requirements.txt
+```
+
+创建 systemd 服务：
+
+```bash
+sudo tee /etc/systemd/system/niuma-convert.service >/dev/null <<'EOF'
+[Unit]
+Description=Niuma PDF conversion service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/apps/niuma.lengziyu.cn
+ExecStart=/opt/apps/niuma.lengziyu.cn/.venv/bin/uvicorn server.app:app --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now niuma-convert
+```
+
+### 1.4 创建 Nginx 配置（可直接复制粘贴）
 
 ```bash
 sudo tee /etc/nginx/conf.d/niuma.lengziyu.cn.conf >/dev/null <<'EOF'
@@ -37,6 +69,18 @@ server {
 
   root /opt/apps/niuma.lengziyu.cn/www;
   index index.html;
+
+  client_max_body_size 80m;
+
+  location /api/ {
+    proxy_pass http://127.0.0.1:8001/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 300s;
+  }
 
   location / {
     try_files $uri $uri/ /index.html;
@@ -57,7 +101,7 @@ EOF
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-> 说明：这是静态托管，不占用 `3000~3013` 端口。
+> 说明：前端仍是静态托管；PDF 转 Word 服务只监听本机 `8001`，由 Nginx 的 `/api/` 转发。
 
 ## 2) 后续更新
 
@@ -66,6 +110,7 @@ sudo nginx -t && sudo systemctl reload nginx
 ```bash
 cd /opt/apps/niuma.lengziyu.cn
 python3 update.py
+sudo systemctl restart niuma-convert
 ```
 
 常用参数：

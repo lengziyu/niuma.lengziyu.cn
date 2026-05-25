@@ -221,10 +221,10 @@ export const tools = [
     settings: [
       {
         id: 'layout',
-        label: '版式优先',
+        label: '转换方案',
         type: 'segmented',
-        options: ['尽量还原', '文本可编辑优先'],
-        defaultValue: '尽量还原'
+        options: ['开源可编辑版', '视觉一比一版'],
+        defaultValue: '开源可编辑版'
       },
       {
         id: 'language',

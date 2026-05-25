@@ -16,12 +16,8 @@ import {
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import UPNG from 'upng-js';
-import PdfJsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 
 /* ─── Utilities ─── */
-
-let pdfJsLibPromise = null;
-let pdfJsWorkerPromise = null;
 
 function formatBytes(value) {
   if (!value) return '0 KB';
@@ -79,6 +75,59 @@ function extensionFromMimeType(mime) {
   if (mime === 'image/webp') return 'webp';
   if (mime === 'image/avif') return 'avif';
   return null;
+}
+
+const PDF_TO_WORD_MODE_BY_LABEL = {
+  '开源可编辑版': 'editable_open_source',
+  '视觉一比一版': 'visual_exact',
+  '尽量还原': 'editable_open_source',
+  '文本可编辑优先': 'editable_open_source'
+};
+
+async function readApiError(response) {
+  const fallback = `PDF 转 Word 服务返回 ${response.status}`;
+
+  try {
+    const text = await response.text();
+    if (!text) return fallback;
+
+    try {
+      const payload = JSON.parse(text);
+      return payload.detail || payload.message || fallback;
+    } catch {
+      return text.length > 120 ? fallback : text;
+    }
+  } catch {
+    return fallback;
+  }
+}
+
+async function convertPdfToWordOnServer(file, selectedMode) {
+  const mode = PDF_TO_WORD_MODE_BY_LABEL[selectedMode] || 'editable_open_source';
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  formData.append('mode', mode);
+
+  let response;
+  try {
+    response = await fetch('/api/pdf-to-word', {
+      method: 'POST',
+      body: formData
+    });
+  } catch {
+    throw new Error('PDF 转 Word 服务未启动或网络不可用，请确认服务端已部署。');
+  }
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response));
+  }
+
+  const blob = await response.blob();
+  if (!blob.size) {
+    throw new Error('PDF 转 Word 服务没有返回有效文件，请稍后重试。');
+  }
+
+  return blob;
 }
 
 function compressImage(file, quality, targetFormat) {
@@ -181,405 +230,6 @@ function convertImage(file, targetFormat, background) {
 
 function isImageMime(mime) {
   return typeof mime === 'string' && mime.startsWith('image/');
-}
-
-function escapeXml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
-}
-
-async function loadPdfJs() {
-  if (!pdfJsLibPromise) {
-    pdfJsLibPromise = import('pdfjs-dist/build/pdf.mjs').then((module) => {
-      return module;
-    });
-  }
-
-  return pdfJsLibPromise;
-}
-
-async function ensurePdfWorker(pdfjs) {
-  if (pdfjs.GlobalWorkerOptions.workerPort) {
-    return pdfjs.GlobalWorkerOptions.workerPort;
-  }
-
-  if (!pdfJsWorkerPromise) {
-    pdfJsWorkerPromise = Promise.resolve(new PdfJsWorker());
-  }
-
-  const worker = await pdfJsWorkerPromise;
-  pdfjs.GlobalWorkerOptions.workerPort = worker;
-  return worker;
-}
-
-function groupPdfItemsIntoLines(items) {
-  const lines = [];
-
-  items
-    .filter((item) => 'str' in item)
-    .map((item) => ({
-      ...item,
-      x: item.transform?.[4] ?? 0,
-      y: item.transform?.[5] ?? 0,
-      fontSize: Math.max(
-        Math.abs(item.height || 0),
-        Math.abs(item.transform?.[0] || 0),
-        Math.abs(item.transform?.[3] || 0)
-      )
-    }))
-    .sort((a, b) => {
-      if (Math.abs(b.y - a.y) > 2) {
-        return b.y - a.y;
-      }
-      return a.x - b.x;
-    })
-    .forEach((item) => {
-      const targetLine = lines.find((line) => Math.abs(line.y - item.y) <= 2.5);
-
-      if (targetLine) {
-        targetLine.items.push(item);
-        targetLine.y = (targetLine.y + item.y) / 2;
-        return;
-      }
-
-      lines.push({
-        y: item.y,
-        items: [item]
-      });
-    });
-
-  return lines
-    .map((line) => {
-      const sortedItems = [...line.items].sort((a, b) => a.x - b.x);
-      let text = '';
-      let lastRight = null;
-
-      sortedItems.forEach((item) => {
-        const raw = item.str ?? '';
-        const chunk = raw.replace(/\s+/g, (value) => (value.includes('\u3000') ? '\u3000' : ' '));
-
-        if (!chunk && !item.hasEOL) {
-          return;
-        }
-
-        if (lastRight != null && chunk && !/^\s/.test(chunk)) {
-          const gap = item.x - lastRight;
-          if (gap > Math.max(6, item.fontSize * 0.45) && !/\s$/.test(text)) {
-            text += ' ';
-          }
-        }
-
-        text += chunk;
-        lastRight = Math.max(lastRight ?? item.x, item.x + (item.width || 0));
-      });
-
-      const fontSize = sortedItems.reduce((max, item) => Math.max(max, item.fontSize), 0);
-      const minX = Math.min(...sortedItems.map((item) => item.x));
-      const maxX = Math.max(...sortedItems.map((item) => item.x + (item.width || 0)));
-      const bold = sortedItems.some((item) => /bold|medium|black|f2/i.test(item.fontName || ''));
-
-      return {
-        text: text.trim(),
-        fontSize,
-        minX,
-        maxX,
-        centerX: (minX + maxX) / 2,
-        bold
-      };
-    })
-    .filter((line) => line.text);
-}
-
-function inferPdfBlock(line, pageWidth) {
-  const text = line.text;
-  const centered =
-    Math.abs(line.centerX - pageWidth / 2) < pageWidth * 0.09 &&
-    line.minX > pageWidth * 0.12;
-  const isHeaderOrFooter =
-    line.fontSize <= 9.5 &&
-    (/^—\s*\d+\s*—$/.test(text) ||
-      text.includes('操作指引手册') ||
-      text.includes('V1.0'));
-
-  if (isHeaderOrFooter) {
-    return null;
-  }
-
-  if (line.fontSize >= 24) {
-    return { text, kind: 'title', align: 'center', fontSize: 24, bold: true };
-  }
-
-  if (line.fontSize >= 16) {
-    return {
-      text,
-      kind: 'heading1',
-      align: centered ? 'center' : 'left',
-      fontSize: 16,
-      bold: true
-    };
-  }
-
-  if (line.fontSize >= 12 && text.length <= 18) {
-    return {
-      text,
-      kind: 'heading2',
-      align: centered ? 'center' : 'left',
-      fontSize: 12,
-      bold: true
-    };
-  }
-
-  if (/^图\s*\d/.test(text)) {
-    return { text, kind: 'caption', align: 'center', fontSize: 10, bold: false };
-  }
-
-  if (text.startsWith('•')) {
-    return { text, kind: 'bullet', align: 'left', fontSize: 11, bold: false };
-  }
-
-  return {
-    text,
-    kind: 'body',
-    align: centered ? 'center' : 'left',
-    fontSize: 11,
-    bold: line.bold
-  };
-}
-
-async function extractPdfBlocks(file, layoutMode = '尽量还原') {
-  const pdfjs = await loadPdfJs();
-  await ensurePdfWorker(pdfjs);
-  const data = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjs.getDocument({ data }).promise;
-  const blocks = [];
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const viewport = page.getViewport({ scale: 1 });
-    const lines = groupPdfItemsIntoLines(textContent.items);
-
-    lines.forEach((line) => {
-      const block =
-        layoutMode === '文本可编辑优先'
-          ? {
-              text: line.text,
-              kind: 'body',
-              align: 'left',
-              fontSize: 11,
-              bold: false
-            }
-          : inferPdfBlock(line, viewport.width);
-
-      if (block) {
-        blocks.push(block);
-      }
-    });
-
-    if (pageNumber < pdf.numPages) {
-      blocks.push({ kind: 'pageBreak' });
-    }
-
-  }
-
-  return blocks;
-}
-
-function createParagraphXml(block) {
-  if (block.kind === 'pageBreak') {
-    return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
-  }
-
-  const fontHalfPoints = Math.round((block.fontSize || 11) * 2);
-  const alignmentMap = {
-    left: 'left',
-    center: 'center',
-    right: 'right'
-  };
-  const spacing =
-    block.kind === 'title'
-      ? '<w:spacing w:before="0" w:after="240" w:line="360" w:lineRule="auto" />'
-      : block.kind === 'heading1'
-        ? '<w:spacing w:before="120" w:after="140" w:line="320" w:lineRule="auto" />'
-        : block.kind === 'heading2'
-          ? '<w:spacing w:before="80" w:after="80" w:line="300" w:lineRule="auto" />'
-          : '<w:spacing w:before="0" w:after="60" w:line="300" w:lineRule="auto" />';
-  const alignment =
-    block.align && alignmentMap[block.align]
-      ? `<w:jc w:val="${alignmentMap[block.align]}" />`
-      : '';
-  const indent =
-    block.kind === 'bullet'
-      ? '<w:ind w:left="720" w:hanging="360" />'
-      : '';
-  const bold = block.bold ? '<w:b />' : '';
-  const styleId =
-    block.kind === 'title'
-      ? '<w:pStyle w:val="Title" />'
-      : block.kind === 'heading1'
-        ? '<w:pStyle w:val="Heading1" />'
-        : block.kind === 'heading2'
-          ? '<w:pStyle w:val="Heading2" />'
-          : block.kind === 'caption'
-            ? '<w:pStyle w:val="Caption" />'
-            : '';
-
-  return `<w:p><w:pPr>${styleId}${alignment}${indent}${spacing}</w:pPr><w:r><w:rPr>${bold}<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" /><w:lang w:val="zh-CN" /><w:sz w:val="${fontHalfPoints}" /></w:rPr><w:t xml:space="preserve">${escapeXml(block.text)}</w:t></w:r></w:p>`;
-}
-
-async function createDocxFromBlocks(blocks, sourceName) {
-  const zip = new JSZip();
-  const safeBlocks = blocks.length
-    ? blocks
-    : [{
-        text: '这份 PDF 暂时没有提取到可编辑文本，可能是扫描件或图片版 PDF。',
-        kind: 'body',
-        align: 'left',
-        fontSize: 11,
-        bold: false
-      }];
-  const now = new Date().toISOString();
-
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
-  <w:body>
-    ${safeBlocks.map((block) => createParagraphXml(block)).join('')}
-    <w:sectPr>
-      <w:pgSz w:w="11906" w:h="16838" />
-      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0" />
-    </w:sectPr>
-  </w:body>
-</w:document>`;
-
-  zip.file(
-    '[Content_Types].xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
-  <Default Extension="xml" ContentType="application/xml" />
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml" />
-  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml" />
-  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml" />
-  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" />
-</Types>`
-  );
-
-  zip.folder('_rels')?.file(
-    '.rels',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml" />
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml" />
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml" />
-</Relationships>`
-  );
-
-  zip.folder('word')?.file('document.xml', documentXml);
-  zip.folder('word')?.folder('_rels')?.file(
-    'document.xml.rels',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships" />`
-  );
-  zip.folder('word')?.file(
-    'styles.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
-    <w:name w:val="Normal" />
-    <w:qFormat />
-    <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
-      <w:sz w:val="24" />
-      <w:lang w:val="zh-CN" />
-    </w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Title">
-    <w:name w:val="Title" />
-    <w:basedOn w:val="Normal" />
-    <w:qFormat />
-    <w:pPr>
-      <w:jc w:val="center" />
-      <w:spacing w:after="240" />
-    </w:pPr>
-    <w:rPr>
-      <w:b />
-      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
-      <w:sz w:val="48" />
-      <w:lang w:val="zh-CN" />
-    </w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading1">
-    <w:name w:val="Heading 1" />
-    <w:basedOn w:val="Normal" />
-    <w:qFormat />
-    <w:pPr>
-      <w:spacing w:before="120" w:after="140" />
-    </w:pPr>
-    <w:rPr>
-      <w:b />
-      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
-      <w:sz w:val="32" />
-      <w:lang w:val="zh-CN" />
-    </w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading2">
-    <w:name w:val="Heading 2" />
-    <w:basedOn w:val="Normal" />
-    <w:qFormat />
-    <w:pPr>
-      <w:spacing w:before="80" w:after="80" />
-    </w:pPr>
-    <w:rPr>
-      <w:b />
-      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
-      <w:sz w:val="24" />
-      <w:lang w:val="zh-CN" />
-    </w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Caption">
-    <w:name w:val="Caption" />
-    <w:basedOn w:val="Normal" />
-    <w:qFormat />
-    <w:pPr>
-      <w:jc w:val="center" />
-      <w:spacing w:before="40" w:after="80" />
-    </w:pPr>
-    <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft YaHei" w:cs="Calibri" />
-      <w:sz w:val="20" />
-      <w:lang w:val="zh-CN" />
-    </w:rPr>
-  </w:style>
-</w:styles>`
-  );
-
-  zip.folder('docProps')?.file(
-    'core.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>${escapeXml(sourceName)}</dc:title>
-  <dc:creator>牛马百宝箱</dc:creator>
-  <cp:lastModifiedBy>牛马百宝箱</cp:lastModifiedBy>
-  <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
-  <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
-</cp:coreProperties>`
-  );
-  zip.folder('docProps')?.file(
-    'app.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-  <Application>牛马百宝箱</Application>
-</Properties>`
-  );
-
-  return zip.generateAsync({
-    type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  });
 }
 
 /* ─── Sub-components ─── */
@@ -805,7 +455,9 @@ function FileItem({ item, onRemove }) {
         </div>
       )}
       {item.status === 'error' && (
-        <span className="detail-workbench__file-error">处理失败</span>
+        <span className="detail-workbench__file-error" title={item.errorMessage || '处理失败'}>
+          {item.errorMessage || '处理失败'}
+        </span>
       )}
     </div>
   );
@@ -974,6 +626,7 @@ export default function Workbench({ tool }) {
       resultSize: null,
       blob: null,
       outputName: null,
+      errorMessage: null,
       status: 'pending'
     }));
     setFileQueue((cur) => [...cur, ...newItems]);
@@ -1024,7 +677,7 @@ export default function Workbench({ tool }) {
     const pending = queue.filter((f) => f.status === 'pending');
 
     for (const item of pending) {
-      setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'processing' } : f));
+      setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'processing', errorMessage: null } : f));
 
       try {
         let blob = null;
@@ -1048,8 +701,7 @@ export default function Workbench({ tool }) {
           blob = item.file;
           outputName = item.name.replace(/\.[^.]+$/, '.pdf');
         } else if (tool.id === 'pdf-to-word') {
-          const blocks = await extractPdfBlocks(item.file, settings.layout || '尽量还原');
-          blob = await createDocxFromBlocks(blocks, item.name);
+          blob = await convertPdfToWordOnServer(item.file, settings.layout || '开源可编辑版');
           outputName = item.name.replace(/\.pdf$/i, '.docx');
         } else {
           // Generic simulation for other file tools
@@ -1065,11 +717,16 @@ export default function Workbench({ tool }) {
           status: 'done',
           blob,
           outputName,
-          resultSize: blob?.size ?? item.originSize
+          resultSize: blob?.size ?? item.originSize,
+          errorMessage: null
         } : f));
       } catch (error) {
         console.error(`[${tool.id}] process failed for ${item.name}`, error);
-        setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'error' } : f));
+        setFileQueue((cur) => cur.map((f) => f.id === item.id ? {
+          ...f,
+          status: 'error',
+          errorMessage: error instanceof Error ? error.message : '处理失败'
+        } : f));
       }
     }
 
@@ -1085,7 +742,8 @@ export default function Workbench({ tool }) {
             status: 'pending',
             blob: null,
             resultSize: null,
-            outputName: null
+            outputName: null,
+            errorMessage: null
           }
         : item
     );
