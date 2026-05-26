@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource/inter";
+@import "@fontsource/ma-shan-zheng";
 @import "@fontsource-variable/inter-tight";
 
 @custom-variant dark (&:is(.dark *));
