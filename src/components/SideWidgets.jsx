@@ -460,6 +460,21 @@ export default function SideWidgets({
               <Sparkles aria-hidden="true" size={16} />
               <span>小牛摸鱼角</span>
             </div>
+            <button
+              className="boss-trigger-btn"
+              type="button"
+              title="奋斗模式 (Ctrl+B)"
+              onClick={() => {
+                const event = new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true });
+                window.dispatchEvent(event);
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+              </svg>
+            </button>
             {/* <button className="niuma-widget__text-btn" type="button" onClick={onToggleCollapsed}>
               {collapsed ? '展开' : '收起'}
               <ChevronUp

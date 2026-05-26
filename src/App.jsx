@@ -1,161 +1,36 @@
-import { useEffect, useRef, useState } from 'react';
-import { animate } from 'animejs';
+import { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import Header from './components/Header';
-import { headerNavItems } from './data/home';
 import FavoritesPage from './pages/FavoritesPage';
 import HomePage from './pages/HomePage';
-import HomePage1920 from './pages/HomePage1920';
 import ToolPage from './pages/ToolPage';
 import ToolsPage from './pages/ToolsPage';
+import BossMode from './components/BossMode';
+import './styles/boss.css';
 
-function PageTransition({ children, isHomeRoute }) {
+const BOSS_TITLE = '企业智能工作台 - 数据中心';
+const NORMAL_TITLE = '牛马百宝箱 | 打工人工具箱';
+
+function PageTransition({ children }) {
   const location = useLocation();
-  const pageRef = useRef(null);
-
-  useEffect(() => {
-    const pageRoot = pageRef.current;
-
-    if (!pageRoot || typeof window === 'undefined') {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-    if (mediaQuery.matches) {
-      return undefined;
-    }
-
-    const pageSurface = pageRoot.firstElementChild;
-    const surfaceBlur = isHomeRoute ? 10 : 12;
-    const nodeBlur = isHomeRoute ? 14 : 18;
-
-    if (!pageSurface) {
-      return undefined;
-    }
-
-    const stagedNodes = Array.from(
-      pageSurface.querySelectorAll(
-        [
-          '.niuma-home__layout > *',
-          '.niuma-home__section > *',
-          '.niuma-side-widgets > *',
-          '.niuma-subpage__search-anchor',
-          '.niuma-subpage__body > *',
-          '.tool-detail-header',
-          '.tool-detail-stage'
-        ].join(', ')
-      )
-    );
-
-    const entranceAnimations = [
-      animate(pageSurface, {
-        opacity: [0, 1],
-        translateY: [14, 0],
-        scale: [0.988, 1],
-        filter: [`blur(${surfaceBlur}px)`, 'blur(0px)'],
-        duration: isHomeRoute ? 420 : 380,
-        ease: 'out(4)',
-        onBegin: () => {
-          pageSurface.style.willChange = 'transform, opacity, filter';
-        },
-        onComplete: () => {
-          pageSurface.style.willChange = '';
-          pageSurface.style.opacity = '1';
-          pageSurface.style.transform = '';
-          pageSurface.style.filter = '';
-        }
-      })
-    ];
-
-    if (stagedNodes.length) {
-      stagedNodes.forEach((node) => {
-        node.style.transformOrigin = '50% 50%';
-        node.style.willChange = 'transform, opacity, filter';
-      });
-
-      entranceAnimations.push(
-        animate(stagedNodes, {
-          opacity: [0, 1],
-          translateY: [16, 0],
-          scale: [0.976, 1],
-          filter: [`blur(${nodeBlur}px)`, 'blur(0px)'],
-          delay: (_, index) => index * 14,
-          duration: isHomeRoute ? 400 : 360,
-          ease: 'out(4)',
-          onComplete: () => {
-            stagedNodes.forEach((node) => {
-              node.style.willChange = '';
-              node.style.opacity = '1';
-              node.style.transform = '';
-              node.style.filter = '';
-            });
-          }
-        })
-      );
-    }
-
-    return () => {
-      entranceAnimations.forEach((animation) => animation.cancel?.());
-    };
-  }, [isHomeRoute, location.pathname]);
 
   return (
-    <main className={`page-transition ${isHomeRoute ? 'is-home-route' : ''}`} ref={pageRef}>
+    <main className="page-transition" key={location.pathname}>
       {children}
     </main>
   );
 }
 
-function GlobalHeader({ setTheme, theme }) {
-  const location = useLocation();
-  const pathname = location.pathname;
-  const isHomeRoute = pathname === '/' || pathname === '/home-1920';
-  const isToolDetailRoute = /^\/tools\/[^/]+$/.test(pathname);
-  const activeKey =
-    pathname === '/favorites'
-      ? 'favorites'
-      : pathname.startsWith('/tools')
-        ? 'all'
-        : 'home';
-
-  function handleNavClick(key) {
-    if (key === 'home' && isHomeRoute) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }
-
-  if (isToolDetailRoute) {
-    return null;
-  }
-
-  return (
-    <div
-      className={`app-global-header ${isHomeRoute ? 'is-home' : 'is-subpage'} ${
-        pathname === '/home-1920' ? 'is-home-1920' : ''
-      }`}
-    >
-      <div className="app-global-header__inner">
-        <Header
-          activeKey={activeKey}
-          hidesBrand={!isHomeRoute}
-          navItems={headerNavItems}
-          setTheme={setTheme}
-          theme={theme}
-          onNavClick={handleNavClick}
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
-  const location = useLocation();
   const [theme, setTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem('niuma-theme');
-
     return savedTheme === 'dark' ? 'dark' : 'light';
   });
+
+  const [bossMode, setBossMode] = useState(() => {
+    return window.localStorage.getItem('niuma-boss-mode') === 'true';
+  });
+
+  const [bossExiting, setBossExiting] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -163,21 +38,76 @@ export default function App() {
     window.localStorage.setItem('niuma-theme', theme);
   }, [theme]);
 
-  const isHomeRoute = location.pathname === '/' || location.pathname === '/home-1920';
+  useEffect(() => {
+    window.localStorage.setItem('niuma-boss-mode', String(bossMode));
+    document.title = bossMode ? BOSS_TITLE : NORMAL_TITLE;
+  }, [bossMode]);
+
+  const toggleBossMode = useCallback(() => {
+    if (bossMode) {
+      setBossExiting(true);
+      setTimeout(() => {
+        setBossMode(false);
+        setBossExiting(false);
+      }, 300);
+    } else {
+      setBossMode(true);
+    }
+  }, [bossMode]);
+
+  // Keyboard shortcut: Ctrl+B / Cmd+B
+  useEffect(() => {
+    function handleKeydown(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        toggleBossMode();
+      }
+    }
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [toggleBossMode]);
 
   return (
     <>
-      <GlobalHeader setTheme={setTheme} theme={theme} />
-      <PageTransition isHomeRoute={isHomeRoute}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/home-1920" element={<HomePage1920 />} />
-          <Route path="/tools" element={<ToolsPage />} />
-          <Route path="/favorites" element={<FavoritesPage />} />
-          <Route path="/tools/:toolId" element={<ToolPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </PageTransition>
+      {/* Boss Mode Overlay */}
+      {(bossMode || bossExiting) && (
+        <div className={`boss-mode-wrapper ${bossExiting ? 'is-exiting' : ''}`}>
+          <BossMode />
+          <button
+            className="boss-exit-btn"
+            type="button"
+            title="退出奋斗模式 (Ctrl+B)"
+            onClick={toggleBossMode}
+          >
+            退出
+          </button>
+        </div>
+      )}
+
+      {/* Normal App */}
+      <div style={{ display: bossMode ? 'none' : undefined }}>
+        <PageTransition>
+          <Routes>
+            <Route
+              path="/"
+              element={<HomePage theme={theme} setTheme={setTheme} />}
+            />
+            <Route
+              path="/tools"
+              element={<ToolsPage theme={theme} setTheme={setTheme} />}
+            />
+            <Route
+              path="/favorites"
+              element={<FavoritesPage theme={theme} setTheme={setTheme} />}
+            />
+            <Route
+              path="/tools/:toolId"
+              element={<ToolPage theme={theme} setTheme={setTheme} />}
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </PageTransition>
+      </div>
     </>
   );
 }

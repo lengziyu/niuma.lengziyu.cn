@@ -657,7 +657,7 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 @media (min-width: 901px) {
   .page--niuma-home .niuma-home__header {
     position: fixed;
-    top: 20px;
+    top: 19px;
     left: 30px;
     right: 30px;
     z-index: 40;
@@ -3558,7 +3558,23 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 }
 
 .dark .niuma-subpage__header .niuma-home__nav {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dark .niuma-subpage__header .niuma-home__nav a,
+.dark .niuma-subpage__header .niuma-home__nav button {
+  color: #b3b8d4;
+}
+
+.dark .niuma-subpage__header .niuma-home__nav a.is-active,
+.dark .niuma-subpage__header .niuma-home__nav button.is-active {
+  color: #a78bfa;
+}
+
+.dark .niuma-subpage__header .niuma-home__theme-btn {
+  color: #9a96b4;
 }
 
 .niuma-subpage {
