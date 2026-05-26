@@ -7,7 +7,6 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import FeatureBadgeIcon from '../components/FeatureBadgeIcon';
-import Header from '../components/Header';
 import Hero from '../components/Hero';
 import SideWidgets from '../components/SideWidgets';
 import ToolCard from '../components/ToolCard';
@@ -15,7 +14,6 @@ import useFavoriteIds from '../hooks/useFavoriteIds';
 import {
   featureItems,
   getHomeToolCatalog,
-  headerNavItems,
   heroHotTags
 } from '../data/home';
 import { createOfficeFortune, homeQuotes } from '../data/quotes';
@@ -34,7 +32,7 @@ function pickAnotherIndex(length, currentIndex) {
   return nextIndex;
 }
 
-export default function HomePage({ theme, setTheme }) {
+export default function HomePage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('recommended');
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,13 +172,6 @@ export default function HomePage({ theme, setTheme }) {
         <div className="niuma-home__bg niuma-home__bg--two" />
 
         <div className="niuma-home__shell">
-          <Header
-            activeKey="home"
-            navItems={headerNavItems}
-            theme={theme}
-            setTheme={setTheme}
-          />
-
           <main className="niuma-home__layout">
             <div className="niuma-home__primary">
               <Hero

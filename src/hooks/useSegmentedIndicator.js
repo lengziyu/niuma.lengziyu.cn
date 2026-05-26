@@ -12,6 +12,13 @@ export default function useSegmentedIndicator() {
   const segmentedRef = useRef(null);
   const indicatorRef = useRef(null);
   const canRevealIndicatorRef = useRef(true);
+  const lastFrameRef = useRef({
+    width: '',
+    height: '',
+    transform: '',
+    borderRadius: '',
+    opacity: ''
+  });
 
   const updateIndicator = useCallback(() => {
     const root = segmentedRef.current;
@@ -32,12 +39,38 @@ export default function useSegmentedIndicator() {
     const rootRect = root.getBoundingClientRect();
     const itemRect = activeItem.getBoundingClientRect();
 
-    indicator.style.width = `${itemRect.width}px`;
-    indicator.style.height = `${itemRect.height}px`;
-    indicator.style.transform = `translate3d(${itemRect.left - rootRect.left + root.scrollLeft}px, ${itemRect.top - rootRect.top + root.scrollTop}px, 0)`;
-    indicator.style.borderRadius = getComputedStyle(activeItem).borderRadius;
+    const width = `${itemRect.width}px`;
+    const height = `${itemRect.height}px`;
+    const transform = `translate3d(${itemRect.left - rootRect.left + root.scrollLeft}px, ${itemRect.top - rootRect.top + root.scrollTop}px, 0)`;
+    const borderRadius = getComputedStyle(activeItem).borderRadius;
     const canRevealIndicator = canRevealIndicatorRef.current;
-    indicator.style.opacity = canRevealIndicator ? '1' : '0';
+    const opacity = canRevealIndicator ? '1' : '0';
+
+    if (lastFrameRef.current.width !== width) {
+      indicator.style.width = width;
+      lastFrameRef.current.width = width;
+    }
+
+    if (lastFrameRef.current.height !== height) {
+      indicator.style.height = height;
+      lastFrameRef.current.height = height;
+    }
+
+    if (lastFrameRef.current.transform !== transform) {
+      indicator.style.transform = transform;
+      lastFrameRef.current.transform = transform;
+    }
+
+    if (lastFrameRef.current.borderRadius !== borderRadius) {
+      indicator.style.borderRadius = borderRadius;
+      lastFrameRef.current.borderRadius = borderRadius;
+    }
+
+    if (lastFrameRef.current.opacity !== opacity) {
+      indicator.style.opacity = opacity;
+      lastFrameRef.current.opacity = opacity;
+    }
+
     root.dataset.segmentedReady = canRevealIndicator ? 'true' : 'false';
   }, []);
 
@@ -59,7 +92,6 @@ export default function useSegmentedIndicator() {
 
     const schedule = () => {
       cancelAnimationFrame(frame);
-      updateIndicator();
       frame = requestAnimationFrame(updateIndicator);
     };
 
@@ -103,7 +135,9 @@ export default function useSegmentedIndicator() {
     canRevealIndicatorRef.current = false;
     root.dataset.segmentedReady = 'false';
     indicator.style.opacity = '0';
+    lastFrameRef.current.opacity = '0';
     indicator.style.transition = 'none';
+    updateIndicator();
     schedule();
 
     if (!fontSet || fontSet.status === 'loaded') {
@@ -126,7 +160,7 @@ export default function useSegmentedIndicator() {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['data-segmented-active', 'data-active', 'data-state', 'aria-selected', 'class', 'style']
+      attributeFilter: ['data-segmented-active', 'data-active', 'data-state', 'aria-selected', 'class']
     });
 
     root.addEventListener('scroll', schedule, { passive: true });

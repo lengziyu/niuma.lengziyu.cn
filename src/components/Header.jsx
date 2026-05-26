@@ -26,7 +26,7 @@ export default function Header({
     favorites: FavoriteNavIcon
   };
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     updateIndicator();
   }, [activeKey, navItems, updateIndicator]);
 
@@ -49,18 +49,7 @@ export default function Header({
     }
 
     const activeItem = navRoot.querySelector('.is-active');
-    const indicator = indicatorRef.current;
     const animations = [];
-
-    if (indicator) {
-      animations.push(
-        animate(indicator, {
-          scale: [0.97, 1],
-          duration: 220,
-          ease: 'out(4)'
-        })
-      );
-    }
 
     if (activeItem) {
       animations.push(

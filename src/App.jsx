@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import Header from './components/Header';
+import { headerNavItems } from './data/home';
 import FavoritesPage from './pages/FavoritesPage';
 import HomePage from './pages/HomePage';
 import ToolPage from './pages/ToolPage';
@@ -21,6 +23,7 @@ function PageTransition({ children }) {
 }
 
 export default function App() {
+  const location = useLocation();
   const [theme, setTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem('niuma-theme');
     return savedTheme === 'dark' ? 'dark' : 'light';
@@ -67,6 +70,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [toggleBossMode]);
 
+  const pathname = location.pathname;
+  const isHomeRoute = pathname === '/';
+  const showGlobalHeader = pathname === '/' || pathname === '/tools' || pathname === '/favorites';
+  const activeKey = pathname === '/favorites' ? 'favorites' : pathname === '/tools' ? 'all' : 'home';
+
   return (
     <>
       {/* Boss Mode Overlay */}
@@ -86,23 +94,36 @@ export default function App() {
 
       {/* Normal App */}
       <div style={{ display: bossMode ? 'none' : undefined }}>
+        {showGlobalHeader ? (
+          <div className={`app-global-header ${isHomeRoute ? 'is-home' : 'is-subpage'}`}>
+            <div className="app-global-header__inner">
+              <Header
+                activeKey={activeKey}
+                hidesBrand={!isHomeRoute}
+                navItems={headerNavItems}
+                setTheme={setTheme}
+                theme={theme}
+              />
+            </div>
+          </div>
+        ) : null}
         <PageTransition>
           <Routes>
             <Route
               path="/"
-              element={<HomePage theme={theme} setTheme={setTheme} />}
+              element={<HomePage />}
             />
             <Route
               path="/tools"
-              element={<ToolsPage theme={theme} setTheme={setTheme} />}
+              element={<ToolsPage />}
             />
             <Route
               path="/favorites"
-              element={<FavoritesPage theme={theme} setTheme={setTheme} />}
+              element={<FavoritesPage />}
             />
             <Route
               path="/tools/:toolId"
-              element={<ToolPage theme={theme} setTheme={setTheme} />}
+              element={<ToolPage />}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

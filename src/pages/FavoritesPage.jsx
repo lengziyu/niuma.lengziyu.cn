@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
-import Header from '../components/Header';
 import ToolCard from '../components/ToolCard';
-import { getHomeToolCatalog, headerNavItems } from '../data/home';
+import { getHomeToolCatalog } from '../data/home';
 import useFavoriteIds from '../hooks/useFavoriteIds';
 
-export default function FavoritesPage({ theme, setTheme }) {
+export default function FavoritesPage() {
   const { favoriteSet, setFavoriteIds } = useFavoriteIds();
   const allTools = useMemo(() => getHomeToolCatalog(), []);
   const favoriteTools = useMemo(
@@ -19,16 +18,6 @@ export default function FavoritesPage({ theme, setTheme }) {
   return (
     <div className="page page--niuma-subpage">
       <div className="niuma-subpage">
-        <header className="niuma-subpage__header">
-          <Header
-            activeKey="favorites"
-            navItems={headerNavItems}
-            setTheme={setTheme}
-            theme={theme}
-            hidesBrand
-          />
-        </header>
-
         <main className="niuma-subpage__body">
           <div className="niuma-home__tool-grid niuma-home__tool-grid--full">
             {favoriteTools.length ? (

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import Header from '../components/Header';
 import ToolCard from '../components/ToolCard';
-import { getHomeToolCatalog, headerNavItems, matchesToolSearch } from '../data/home';
+import { getHomeToolCatalog, matchesToolSearch } from '../data/home';
 import useFavoriteIds from '../hooks/useFavoriteIds';
 
-export default function ToolsPage({ theme, setTheme }) {
+export default function ToolsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchInputRef = useRef(null);
   const searchWrapRef = useRef(null);
@@ -61,16 +60,6 @@ export default function ToolsPage({ theme, setTheme }) {
   return (
     <div className="page page--niuma-subpage">
       <div className="niuma-subpage">
-        <header className="niuma-subpage__header">
-          <Header
-            activeKey="all"
-            navItems={headerNavItems}
-            setTheme={setTheme}
-            theme={theme}
-            hidesBrand
-          />
-        </header>
-
         <div className="niuma-subpage__search-anchor">
           <form
             ref={searchWrapRef}
