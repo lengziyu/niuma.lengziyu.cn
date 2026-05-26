@@ -32,7 +32,7 @@ function pickAnotherIndex(length, currentIndex) {
   return nextIndex;
 }
 
-export default function HomePage() {
+export default function HomePage({ onToggleBossMode }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('recommended');
   const [searchQuery, setSearchQuery] = useState('');
@@ -276,6 +276,7 @@ export default function HomePage() {
                 onNextQuote={() =>
                   setQuoteIndex((current) => pickAnotherIndex(homeQuotes.length, current))
                 }
+                onToggleBossMode={onToggleBossMode}
                 onToggleCollapsed={() => setQuoteCollapsed((current) => !current)}
               />
             </aside>

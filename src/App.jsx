@@ -111,7 +111,7 @@ export default function App() {
           <Routes>
             <Route
               path="/"
-              element={<HomePage />}
+              element={<HomePage onToggleBossMode={toggleBossMode} />}
             />
             <Route
               path="/tools"

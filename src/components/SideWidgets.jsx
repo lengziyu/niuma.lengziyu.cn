@@ -242,6 +242,349 @@ const coffeeFxBubbles = [
   { x: '79%', size: 6, delay: 160, duration: 860, drift: 11, rise: 25 }
 ];
 
+const milkTeaBrands = [
+  {
+    key: 'mixue',
+    brand: '蜜雪冰城',
+    short: '雪',
+    drink: '冰鲜柠檬水',
+    accent: '#e64545',
+    accentSoft: '#ffe3e3',
+    cupMain: '#fff8f6',
+    cupSecondary: '#ffd6d6',
+    pearl: '#3d221f'
+  },
+  {
+    key: 'chagee',
+    brand: '霸王茶姬',
+    short: '姬',
+    drink: '伯牙绝弦',
+    accent: '#b43a3f',
+    accentSoft: '#ffe0df',
+    cupMain: '#fff9f4',
+    cupSecondary: '#f9d8c9',
+    pearl: '#5a3429'
+  },
+  {
+    key: 'heytea',
+    brand: '喜茶',
+    short: '喜',
+    drink: '多肉葡萄',
+    accent: '#1d1d1f',
+    accentSoft: '#ececec',
+    cupMain: '#fbfbfb',
+    cupSecondary: '#e8ecf4',
+    pearl: '#22242c'
+  },
+  {
+    key: 'chabaidao',
+    brand: '茶百道',
+    short: '茶',
+    drink: '杨枝甘露',
+    accent: '#2d74ff',
+    accentSoft: '#e2ecff',
+    cupMain: '#f8fbff',
+    cupSecondary: '#d8e7ff',
+    pearl: '#2d3a68'
+  },
+  {
+    key: 'guming',
+    brand: '古茗',
+    short: '古',
+    drink: '超A芝士葡萄',
+    accent: '#1f9a62',
+    accentSoft: '#ddf6e9',
+    cupMain: '#f8fff9',
+    cupSecondary: '#d7f5df',
+    pearl: '#284136'
+  },
+  {
+    key: 'hushang',
+    brand: '沪上阿姨',
+    short: '沪',
+    drink: '血糯米奶茶',
+    accent: '#0f8f97',
+    accentSoft: '#ddf8fa',
+    cupMain: '#f8ffff',
+    cupSecondary: '#d6f5f7',
+    pearl: '#294244'
+  }
+];
+
+function MilkTeaBadge({ tea, active = false }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`niuma-tea-badge ${active ? 'is-active' : ''}`}
+      style={{
+        '--tea-accent': tea.accent,
+        '--tea-accent-soft': tea.accentSoft
+      }}
+    >
+      <svg viewBox="0 0 40 40">
+        <rect x="2.5" y="2.5" width="35" height="35" rx="12" fill="var(--tea-accent-soft)" />
+        <path d="M20 10c-4.6 0-8.4 3.8-8.4 8.4 0 4.1 2.9 7.5 6.8 8.2V31h3.2v-4.3c4-.7 6.9-4.1 6.9-8.3C28.5 13.8 24.7 10 20 10Z" fill="var(--tea-accent)" opacity="0.14" />
+        <text x="20" y="24" textAnchor="middle">{tea.short}</text>
+      </svg>
+    </span>
+  );
+}
+
+function TeaScene({ tea, sipToken }) {
+  const canvasRef = useRef(null);
+  const sceneStateRef = useRef(null);
+  const motionRef = useRef({ sipTilt: 0, sipLift: 0 });
+  const shellRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      return undefined;
+    }
+
+    let cleanupScene = () => {};
+    let disposed = false;
+
+    async function setupScene() {
+      const THREE = await import('three');
+
+      if (disposed) {
+        return;
+      }
+
+      const renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        canvas
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0x000000, 0);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+      camera.position.set(0, 0, 6.2);
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const cup = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.86, 0.66, 2.02, 48, 1, true),
+        new THREE.MeshPhongMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.96,
+          shininess: 80
+        })
+      );
+      cup.position.y = -0.12;
+
+      const lid = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.9, 0.9, 0.18, 48),
+        new THREE.MeshPhongMaterial({
+          color: 0xf0d8ff,
+          shininess: 100
+        })
+      );
+      lid.position.y = 0.96;
+
+      const straw = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.06, 1.55, 20),
+        new THREE.MeshPhongMaterial({
+          color: 0x7c4dff,
+          shininess: 90
+        })
+      );
+      straw.position.set(0.34, 1.42, 0.08);
+      straw.rotation.z = -0.16;
+
+      const sleeve = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.56, 0.48, 0.7, 36, 1, true),
+        new THREE.MeshPhongMaterial({
+          color: 0xffe7b7,
+          shininess: 50
+        })
+      );
+      sleeve.position.y = -0.42;
+
+      const logo = new THREE.Mesh(
+        new THREE.CircleGeometry(0.25, 28),
+        new THREE.MeshBasicMaterial({
+          color: 0x7c4dff
+        })
+      );
+      logo.position.set(0, -0.36, 0.68);
+
+      const pearlGroup = new THREE.Group();
+      const pearlMaterial = new THREE.MeshPhongMaterial({
+        color: 0x3d221f,
+        shininess: 28
+      });
+      const pearlOffsets = [
+        [-0.24, -0.86, 0.12],
+        [0.02, -0.84, 0.16],
+        [0.28, -0.78, 0.04],
+        [-0.1, -0.62, -0.06],
+        [0.18, -0.56, -0.1]
+      ];
+
+      pearlOffsets.forEach(([x, y, z]) => {
+        const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 18), pearlMaterial);
+        pearl.position.set(x, y, z);
+        pearlGroup.add(pearl);
+      });
+
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(1.18, 0.045, 16, 88),
+        new THREE.MeshBasicMaterial({
+          color: 0xe3d6ff,
+          transparent: true,
+          opacity: 0.26
+        })
+      );
+      halo.rotation.x = 0.38;
+      halo.position.y = -0.1;
+
+      const light = new THREE.PointLight(0xffffff, 1.8, 20);
+      light.position.set(2.4, 3.2, 5.2);
+      const light2 = new THREE.PointLight(0xc8d8ff, 1.2, 18);
+      light2.position.set(-2.8, -1.2, 4.6);
+      const ambient = new THREE.AmbientLight(0xffffff, 1.18);
+      scene.add(light, light2, ambient);
+
+      group.add(halo, cup, lid, straw, sleeve, logo, pearlGroup);
+
+      const state = {
+        THREE,
+        renderer,
+        scene,
+        camera,
+        group,
+        cupMaterial: cup.material,
+        lidMaterial: lid.material,
+        strawMaterial: straw.material,
+        sleeveMaterial: sleeve.material,
+        logoMaterial: logo.material,
+        pearlMaterial,
+        haloMaterial: halo.material
+      };
+      sceneStateRef.current = state;
+
+      function resize() {
+        const host = canvas.parentElement;
+        const width = Math.max(1, Math.round(host?.clientWidth || 180));
+        const height = Math.max(1, Math.round(host?.clientHeight || 180));
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
+
+      let rafId = 0;
+      const start = performance.now();
+
+      function renderFrame(now) {
+        const elapsed = (now - start) / 1000;
+        const sipMotion = motionRef.current;
+        group.rotation.y = elapsed * 0.42;
+        group.rotation.z = sipMotion.sipTilt + Math.sin(elapsed * 1.6) * 0.028;
+        group.position.y = sipMotion.sipLift + Math.sin(elapsed * 2.1) * 0.08;
+        halo.material.opacity = 0.18 + Math.sin(elapsed * 2.3) * 0.06;
+        pearlGroup.rotation.y = -elapsed * 0.8;
+        renderer.render(scene, camera);
+        rafId = window.requestAnimationFrame(renderFrame);
+      }
+
+      resize();
+      rafId = window.requestAnimationFrame(renderFrame);
+
+      const resizeObserver = new ResizeObserver(resize);
+      if (canvas.parentElement) {
+        resizeObserver.observe(canvas.parentElement);
+      }
+
+      cleanupScene = () => {
+        window.cancelAnimationFrame(rafId);
+        resizeObserver.disconnect();
+        cup.geometry.dispose();
+        cup.material.dispose();
+        lid.geometry.dispose();
+        lid.material.dispose();
+        straw.geometry.dispose();
+        straw.material.dispose();
+        sleeve.geometry.dispose();
+        sleeve.material.dispose();
+        logo.geometry.dispose();
+        logo.material.dispose();
+        halo.geometry.dispose();
+        halo.material.dispose();
+        pearlGroup.children.forEach((child) => {
+          child.geometry.dispose();
+        });
+        pearlMaterial.dispose();
+        renderer.dispose();
+      };
+    }
+
+    void setupScene();
+
+    return () => {
+      disposed = true;
+      cleanupScene();
+    };
+  }, []);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+
+    if (!state || !tea) {
+      return undefined;
+    }
+
+    state.cupMaterial.color.set(tea.cupMain);
+    state.lidMaterial.color.set(tea.cupSecondary);
+    state.strawMaterial.color.set(tea.accent);
+    state.sleeveMaterial.color.set(tea.accentSoft);
+    state.logoMaterial.color.set(tea.accent);
+    state.pearlMaterial.color.set(tea.pearl);
+    state.haloMaterial.color.set(tea.accent);
+
+    if (!shellRef.current) {
+      return undefined;
+    }
+
+    const animation = animate(shellRef.current, {
+      opacity: [0.72, 1],
+      scale: [0.94, 1],
+      duration: 420,
+      ease: 'out(4)'
+    });
+
+    return () => animation.cancel?.();
+  }, [tea]);
+
+  useEffect(() => {
+    if (!sipToken) {
+      return undefined;
+    }
+
+    const motion = motionRef.current;
+    const animation = animate(motion, {
+      sipTilt: [0, -0.24, 0.12, 0],
+      sipLift: [0, 0.18, -0.04, 0],
+      duration: 760,
+      ease: 'inOutSine'
+    });
+
+    return () => animation.cancel?.();
+  }, [sipToken]);
+
+  return (
+    <div className="niuma-tea-scene" ref={shellRef}>
+      <canvas aria-hidden="true" className="niuma-tea-scene__canvas" ref={canvasRef} />
+    </div>
+  );
+}
+
 export default function SideWidgets({
   collapsed,
   quote,
@@ -250,15 +593,21 @@ export default function SideWidgets({
   onNextQuote,
   onNextFortune,
   onAction,
+  onToggleBossMode,
   layoutMode = 'default'
 }) {
   const shellRef = useRef(null);
   const contentRef = useRef(null);
   const scrambleTimerRef = useRef(null);
+  const teaPanelRef = useRef(null);
+  const teaStageRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [gameHeight, setGameHeight] = useState(null);
   const [coffeeFxToken, setCoffeeFxToken] = useState(0);
   const [encourageFxToken, setEncourageFxToken] = useState(0);
+  const [teaOpen, setTeaOpen] = useState(false);
+  const [teaSipToken, setTeaSipToken] = useState(0);
+  const [selectedTea, setSelectedTea] = useState(milkTeaBrands[0]);
   const [displayQuote, setDisplayQuote] = useState('');
 
   useEffect(() => {
@@ -438,23 +787,62 @@ export default function SideWidgets({
     };
   }, [collapsed, fortune, quote, scale, layoutMode]);
 
-  function handleQuickAction(actionKey) {
-    onAction(actionKey);
+  useEffect(() => {
+    if (!teaOpen || !teaPanelRef.current) {
+      return undefined;
+    }
 
+    const animation = animate(teaPanelRef.current, {
+      opacity: [0, 1],
+      translateY: [10, 0],
+      scale: [0.97, 1],
+      duration: 320,
+      ease: 'out(4)'
+    });
+
+    return () => animation.cancel?.();
+  }, [teaOpen]);
+
+  useEffect(() => {
+    if (!teaStageRef.current) {
+      return undefined;
+    }
+
+    const animation = animate(teaStageRef.current, {
+      opacity: [0.68, 1],
+      translateY: [6, 0],
+      duration: 340,
+      ease: 'out(4)'
+    });
+
+    return () => animation.cancel?.();
+  }, [selectedTea]);
+
+  function handleQuickAction(actionKey) {
     if (actionKey === 'coffee') {
+      setTeaOpen((current) => !current);
       setCoffeeFxToken(Date.now());
       return;
     }
+
+    onAction(actionKey);
 
     if (actionKey === 'encourage') {
       setEncourageFxToken(Date.now());
     }
   }
 
+  function handleTeaPick(tea) {
+    setSelectedTea(tea);
+    setTeaOpen(true);
+    setTeaSipToken(Date.now());
+    setCoffeeFxToken(Date.now());
+  }
+
   return (
     <div className="niuma-side-widgets" ref={shellRef}>
       <div className="niuma-side-widgets__content" ref={contentRef} style={scaledStyle}>
-        <section className="niuma-widget niuma-widget--quote">
+        <section className={`niuma-widget niuma-widget--quote ${teaOpen ? 'has-floating-tea' : ''}`}>
           <div className="niuma-widget__header">
             <div className="niuma-widget__title">
               <Sparkles aria-hidden="true" size={16} />
@@ -463,11 +851,8 @@ export default function SideWidgets({
             <button
               className="boss-trigger-btn"
               type="button"
-              title="奋斗模式 (Ctrl+B)"
-              onClick={() => {
-                const event = new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true });
-                window.dispatchEvent(event);
-              }}
+              title="切换努力工作模式 (Ctrl+B)"
+              onClick={() => onToggleBossMode?.()}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -554,6 +939,54 @@ export default function SideWidgets({
                   );
                 })}
               </div>
+
+              {teaOpen ? (
+                <div className="niuma-tea-panel" ref={teaPanelRef}>
+                  <div className="niuma-tea-panel__header">
+                    <strong>今天喝一杯</strong>
+                    <span>{selectedTea.brand} · {selectedTea.drink}</span>
+                  </div>
+
+                  <div className="niuma-tea-panel__brands" role="list" aria-label="奶茶品牌">
+                    {milkTeaBrands.map((tea) => (
+                      <button
+                        key={tea.key}
+                        className={`niuma-tea-brand ${selectedTea.key === tea.key ? 'is-active' : ''}`}
+                        type="button"
+                        onClick={() => handleTeaPick(tea)}
+                      >
+                        <MilkTeaBadge active={selectedTea.key === tea.key} tea={tea} />
+                        <span>{tea.brand}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="niuma-tea-panel__stage" ref={teaStageRef}>
+                    <div className="niuma-tea-panel__visual">
+                      <TeaScene sipToken={teaSipToken} tea={selectedTea} />
+                      {teaSipToken ? (
+                        <span className="niuma-tea-panel__sip-fx" aria-hidden="true" key={teaSipToken}>
+                          <i />
+                          <i />
+                          <i />
+                          <b>吨吨吨</b>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="niuma-tea-panel__copy">
+                      <div className="niuma-tea-panel__brandline">
+                        <MilkTeaBadge tea={selectedTea} />
+                        <div>
+                          <strong>{selectedTea.brand}</strong>
+                          <span>{selectedTea.drink}</span>
+                        </div>
+                      </div>
+                      <p>摸鱼补给已送达，来一口再继续轻松开工。</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : null}
         </section>

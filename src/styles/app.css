@@ -284,6 +284,16 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 
 .app-global-header .niuma-home__header {
   margin-top: 0;
+  pointer-events: none;
+}
+
+.app-global-header .niuma-home__brand,
+.app-global-header .niuma-home__nav,
+.app-global-header .niuma-home__header-actions,
+.app-global-header .niuma-home__theme-btn,
+.app-global-header .niuma-home__nav a,
+.app-global-header .niuma-home__nav button {
+  pointer-events: auto;
 }
 
 .app-global-header.is-home .niuma-home__header {
@@ -720,11 +730,227 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 }
 
 .niuma-home__hero-copy {
+  position: relative;
   padding: 0;
 }
 
 .niuma-home__hero-1920-strip {
   display: none;
+}
+
+.niuma-home__egg-panel {
+  position: absolute;
+  left: 464px;
+  top: -44px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 9px 10px 9px 11px;
+  border: 1px solid rgba(150, 131, 255, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 243, 255, 0.92));
+  box-shadow:
+    0 14px 26px rgba(124, 77, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: niuma-egg-panel-in 320ms ease both;
+}
+
+.niuma-home__egg-panel-fireworks {
+  position: absolute;
+  inset: -24px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.niuma-home__egg-panel-fireworks i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  margin-top: -4px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 0 24%, currentColor 25% 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, currentColor 42%, transparent);
+  animation: niuma-egg-firework 760ms cubic-bezier(0.18, 0.8, 0.2, 1) both;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(1) {
+  --tx: -46px;
+  --ty: -30px;
+  color: #7c4dff;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(2) {
+  --tx: -14px;
+  --ty: -44px;
+  color: #ffb84d;
+  animation-delay: 20ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(3) {
+  --tx: 18px;
+  --ty: -42px;
+  color: #5ed6a7;
+  animation-delay: 40ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(4) {
+  --tx: 46px;
+  --ty: -18px;
+  color: #6ea8ff;
+  animation-delay: 60ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(5) {
+  --tx: 42px;
+  --ty: 18px;
+  color: #ff8fc2;
+  animation-delay: 80ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(6) {
+  --tx: 14px;
+  --ty: 36px;
+  color: #ffd166;
+  animation-delay: 100ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(7) {
+  --tx: -22px;
+  --ty: 34px;
+  color: #8de26a;
+  animation-delay: 120ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(8) {
+  --tx: -42px;
+  --ty: 8px;
+  color: #9f7cff;
+  animation-delay: 140ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(9) {
+  --tx: -56px;
+  --ty: -2px;
+  color: #ff8fc2;
+  animation-delay: 30ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(10) {
+  --tx: -30px;
+  --ty: -56px;
+  color: #84d8ff;
+  animation-delay: 70ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(11) {
+  --tx: 4px;
+  --ty: -60px;
+  color: #ffe27a;
+  animation-delay: 95ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(12) {
+  --tx: 58px;
+  --ty: -4px;
+  color: #7c4dff;
+  animation-delay: 120ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(13) {
+  --tx: 30px;
+  --ty: 48px;
+  color: #64e7a2;
+  animation-delay: 150ms;
+}
+
+.niuma-home__egg-panel-fireworks i:nth-child(14) {
+  --tx: -34px;
+  --ty: 46px;
+  color: #ffb84d;
+  animation-delay: 180ms;
+}
+
+.niuma-home__egg-panel-fireworks.is-grand {
+  inset: -34px;
+}
+
+.niuma-home__egg-panel-fireworks.is-grand i {
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  animation-duration: 980ms;
+}
+
+.niuma-home__egg-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.16), rgba(255, 210, 120, 0.28));
+  color: #7c4dff;
+  flex: 0 0 auto;
+}
+
+.niuma-home__egg-panel-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.niuma-home__egg-panel-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.niuma-home__egg-panel-copy strong {
+  color: #5c35cf;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.niuma-home__egg-panel-copy span {
+  color: #626a88;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.niuma-home__egg-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
+  color: #7c4dff;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.niuma-home__egg-panel-close:hover {
+  transform: translateY(-1px);
+  background: rgba(124, 77, 255, 0.14);
 }
 
 .niuma-home__hero-greeting {
@@ -938,6 +1164,20 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   height: 48%;
 }
 
+.niuma-hero-egg--plant {
+  left: 6%;
+  top: 65%;
+  width: 16%;
+  height: 24%;
+}
+
+.niuma-hero-egg--laptop {
+  left: 24%;
+  top: 63%;
+  width: 12%;
+  height: 17%;
+}
+
 .niuma-hero-egg--coffee {
   right: 37%;
   top: 56%;
@@ -968,10 +1208,24 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   animation: niuma-box-pop 520ms ease both;
 }
 
+.niuma-home__hero-figure.is-plant-active > img,
+.niuma-home__hero-figure.is-plant-active .niuma-home__hero-overlay {
+  animation: niuma-plant-sway 620ms ease both;
+}
+
+.niuma-home__hero-figure.is-laptop-active > img,
+.niuma-home__hero-figure.is-laptop-active .niuma-home__hero-overlay {
+  animation: niuma-laptop-nudge 520ms ease both;
+}
+
 .niuma-hero-egg__blink,
 .niuma-hero-egg__speech,
 .niuma-hero-egg__bubbles,
-.niuma-hero-egg__recommend {
+.niuma-hero-egg__recommend,
+.niuma-hero-egg__plant-burst,
+.niuma-hero-egg__plant-note,
+.niuma-hero-egg__laptop-glow,
+.niuma-hero-egg__laptop-note {
   position: absolute;
   z-index: 4;
   pointer-events: none;
@@ -991,7 +1245,7 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 
 .niuma-hero-egg__speech,
 .niuma-hero-egg__recommend {
-  max-width: 214px;
+  max-width: 280px;
   padding: 10px 12px;
   border: 1px solid rgba(124, 77, 255, 0.18);
   border-radius: 12px;
@@ -1014,6 +1268,7 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   bottom: 40%;
   display: grid;
   gap: 3px;
+  white-space: nowrap;
 }
 
 .niuma-hero-egg__recommend strong {
@@ -1024,6 +1279,9 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 .niuma-hero-egg__recommend span {
   color: #4f5674;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .niuma-hero-egg__bubbles {
@@ -1058,6 +1316,81 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 .niuma-hero-egg__bubbles i:nth-child(3) {
   left: 30px;
   animation-delay: 340ms;
+}
+
+.niuma-hero-egg__plant-burst {
+  left: 4.8%;
+  top: 63%;
+  width: 84px;
+  height: 84px;
+}
+
+.niuma-hero-egg__plant-burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 65% 35% 62% 38% / 44% 58% 42% 56%;
+  background: linear-gradient(180deg, rgba(142, 228, 94, 0.96), rgba(77, 163, 86, 0.92));
+  box-shadow: 0 6px 12px rgba(54, 118, 53, 0.2);
+  animation: niuma-leaf-burst 760ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
+}
+
+.niuma-hero-egg__plant-burst i:nth-child(1) {
+  --tx: -24px;
+  --ty: -28px;
+  transform: rotate(-24deg);
+}
+
+.niuma-hero-egg__plant-burst i:nth-child(2) {
+  --tx: 4px;
+  --ty: -36px;
+  transform: rotate(8deg);
+  animation-delay: 40ms;
+}
+
+.niuma-hero-egg__plant-burst i:nth-child(3) {
+  --tx: 28px;
+  --ty: -18px;
+  transform: rotate(24deg);
+  animation-delay: 80ms;
+}
+
+.niuma-hero-egg__plant-note,
+.niuma-hero-egg__laptop-note {
+  padding: 10px 12px;
+  border: 1px solid rgba(124, 77, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #303858;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.14);
+  animation: niuma-egg-pop 280ms ease both;
+}
+
+.niuma-hero-egg__plant-note {
+  left: 0;
+  top: 58%;
+  white-space: nowrap;
+}
+
+.niuma-hero-egg__laptop-glow {
+  left: 25.8%;
+  top: 65.5%;
+  width: 8.5%;
+  height: 11.5%;
+  border-radius: 18px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.92) 0 18%, rgba(124, 77, 255, 0.16) 48%, transparent 74%);
+  animation: niuma-laptop-glow 760ms ease both;
+}
+
+.niuma-hero-egg__laptop-note {
+  left: 10%;
+  top: 48%;
+  max-width: 248px;
 }
 
 .niuma-home__hero-illustration img {
@@ -1142,6 +1475,15 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   .page--niuma-home .niuma-home__section {
     flex: 1 1 auto;
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 1180px) {
+  .niuma-home__egg-panel {
+    position: static;
+    width: fit-content;
+    max-width: min(100%, 360px);
+    margin: 0 0 14px;
   }
 }
 
@@ -1658,6 +2000,21 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   flex: 1 1 auto;
 }
 
+.niuma-widget--quote {
+  position: relative;
+  overflow: visible;
+  z-index: 4;
+}
+
+.niuma-widget--quote.has-floating-tea {
+  margin-bottom: 0;
+}
+
+.niuma-widget--fortune {
+  position: relative;
+  z-index: 1;
+}
+
 .niuma-widget__quick-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1798,6 +2155,219 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   width: 6px;
   height: 6px;
   animation-delay: 100ms;
+}
+
+.niuma-tea-panel {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: calc(100% - 22px);
+  z-index: 8;
+  margin-top: 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 122, 255, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(248, 244, 255, 0.44));
+  box-shadow:
+    0 18px 34px rgba(124, 77, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.niuma-tea-panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.niuma-tea-panel__header strong {
+  color: #4730b4;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.niuma-tea-panel__header span {
+  color: #7f6dc7;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.niuma-tea-panel__brands {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.niuma-tea-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 122, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #4f5674;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.niuma-tea-brand.is-active {
+  border-color: rgba(124, 77, 255, 0.34);
+  box-shadow: 0 10px 18px rgba(124, 77, 255, 0.12);
+}
+
+.niuma-tea-brand span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.niuma-tea-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+}
+
+.niuma-tea-badge svg {
+  width: 100%;
+  height: 100%;
+}
+
+.niuma-tea-badge text {
+  fill: var(--tea-accent);
+  font-size: 14px;
+  font-weight: 800;
+  dominant-baseline: middle;
+}
+
+.niuma-tea-badge.is-active svg rect {
+  stroke: var(--tea-accent);
+  stroke-width: 1.8;
+}
+
+.niuma-tea-panel__stage {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 10px 8px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(124, 77, 255, 0.12), transparent 34%),
+    rgba(255, 255, 255, 0.74);
+}
+
+.niuma-tea-panel__visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+}
+
+.niuma-tea-scene {
+  position: relative;
+  width: 128px;
+  height: 140px;
+}
+
+.niuma-tea-scene__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.niuma-tea-panel__sip-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.niuma-tea-panel__sip-fx i {
+  position: absolute;
+  left: 50%;
+  bottom: 32px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.98) 0 30%, rgba(233, 223, 255, 0.94) 54%, rgba(124, 77, 255, 0.34) 82%, rgba(124, 77, 255, 0) 100%);
+  box-shadow: 0 2px 10px rgba(124, 77, 255, 0.26);
+  animation: niuma-tea-sip-bubble 900ms cubic-bezier(0.22, 0.78, 0.2, 1) both;
+}
+
+.niuma-tea-panel__sip-fx i:nth-child(1) {
+  --tx: -20px;
+  --ty: -54px;
+}
+
+.niuma-tea-panel__sip-fx i:nth-child(2) {
+  --tx: 0px;
+  --ty: -68px;
+  width: 8px;
+  height: 8px;
+  animation-delay: 50ms;
+}
+
+.niuma-tea-panel__sip-fx i:nth-child(3) {
+  --tx: 18px;
+  --ty: -48px;
+  animation-delay: 100ms;
+}
+
+.niuma-tea-panel__sip-fx b {
+  position: absolute;
+  right: 8px;
+  top: 10px;
+  color: #7c4dff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  animation: niuma-tea-sip-text 720ms ease both;
+}
+
+.niuma-tea-panel__copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.niuma-tea-panel__brandline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.niuma-tea-panel__brandline strong {
+  display: block;
+  color: #353d60;
+  font-size: 15px;
+}
+
+.niuma-tea-panel__brandline span {
+  display: block;
+  margin-top: 2px;
+  color: #7b82a2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.niuma-tea-panel__copy p {
+  margin: 0;
+  color: #59617f;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .niuma-fortune {
@@ -2505,6 +3075,34 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   }
 }
 
+@keyframes niuma-egg-panel-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes niuma-egg-firework {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.2);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tx), var(--ty), 0) scale(1.12);
+  }
+}
+
 @keyframes niuma-coffee-bubble {
   0% {
     opacity: 0;
@@ -2518,6 +3116,68 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   100% {
     opacity: 0;
     transform: translateY(-42px) scale(1.25);
+  }
+}
+
+@keyframes niuma-leaf-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35) rotate(0deg);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.15) rotate(18deg);
+  }
+}
+
+@keyframes niuma-plant-sway {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  32% {
+    transform: translate3d(-2px, -4px, 0) rotate(-1.1deg);
+  }
+
+  68% {
+    transform: translate3d(3px, -2px, 0) rotate(1deg);
+  }
+}
+
+@keyframes niuma-laptop-nudge {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  42% {
+    transform: translate3d(0, -3px, 0) scale(1.01);
+  }
+
+  76% {
+    transform: translate3d(0, 0, 0) scale(1.005);
+  }
+}
+
+@keyframes niuma-laptop-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
   }
 }
 
@@ -2550,6 +3210,38 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   100% {
     opacity: 0;
     transform: translate3d(var(--bubble-drift), calc(var(--bubble-rise) * -1), 0) scale(1.25);
+  }
+}
+
+@keyframes niuma-tea-sip-bubble {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.4);
+  }
+
+  22% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tx), var(--ty), 0) scale(1.18);
+  }
+}
+
+@keyframes niuma-tea-sip-text {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(1.02);
   }
 }
 
@@ -2815,6 +3507,31 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   color: #b3b8d4;
 }
 
+.dark .niuma-home__egg-panel {
+  border-color: rgba(178, 167, 255, 0.16);
+  background: rgba(29, 27, 47, 0.9);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dark .niuma-home__egg-panel-copy strong {
+  color: #c2b5ff;
+}
+
+.dark .niuma-home__egg-panel-copy span {
+  color: #bbb6d5;
+}
+
+.dark .niuma-home__egg-panel-close {
+  background: rgba(167, 139, 250, 0.12);
+  color: #c2b5ff;
+}
+
+.dark .niuma-home__egg-panel-close:hover {
+  background: rgba(167, 139, 250, 0.2);
+}
+
 .dark .niuma-home__nav {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.06);
@@ -2878,6 +3595,47 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
   border-color: rgba(178, 167, 255, 0.16);
   background: rgba(255, 255, 255, 0.05);
   color: #d6daf2;
+}
+
+.dark .niuma-tea-panel {
+  border-color: rgba(178, 167, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(34, 31, 56, 0.94), rgba(25, 23, 42, 0.92));
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.dark .niuma-tea-panel__header strong,
+.dark .niuma-tea-panel__sip-fx b {
+  color: #c3b6ff;
+}
+
+.dark .niuma-tea-panel__header span,
+.dark .niuma-tea-panel__brandline span,
+.dark .niuma-tea-panel__copy p {
+  color: #aeb5d3;
+}
+
+.dark .niuma-tea-brand {
+  border-color: rgba(178, 167, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #dfe5ff;
+}
+
+.dark .niuma-tea-brand.is-active {
+  border-color: rgba(167, 139, 250, 0.28);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+.dark .niuma-tea-panel__stage {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(124, 77, 255, 0.18), transparent 34%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.dark .niuma-tea-panel__brandline strong {
+  color: #f4f3ff;
 }
 
 .dark .niuma-home__search {
@@ -3140,7 +3898,9 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 }
 
 .dark .niuma-hero-egg__speech,
-.dark .niuma-hero-egg__recommend {
+.dark .niuma-hero-egg__recommend,
+.dark .niuma-hero-egg__plant-note,
+.dark .niuma-hero-egg__laptop-note {
   border-color: rgba(178, 167, 255, 0.16);
   background: rgba(30, 28, 50, 0.94);
   color: #f4f3ff;
@@ -3211,6 +3971,29 @@ body:has(.page--niuma-home)::-webkit-scrollbar {
 
   .niuma-home__tool-grid,
   .niuma-home__features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .niuma-widget--quote.has-floating-tea {
+    margin-bottom: 0;
+  }
+
+  .niuma-tea-panel {
+    position: static;
+    margin-top: 10px;
+  }
+
+  .niuma-tea-panel__stage {
+    grid-template-columns: 1fr;
+  }
+
+  .niuma-tea-panel__visual {
+    min-height: 124px;
+  }
+}
+
+@media (max-width: 640px) {
+  .niuma-tea-panel__brands {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

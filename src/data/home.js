@@ -27,7 +27,7 @@ export const featureItems = [
 ];
 
 export const cornerActions = [
-  { key: 'coffee', label: '喝杯咖啡', icon: 'coffee' },
+  { key: 'coffee', label: '喝一杯', icon: 'coffee' },
   { key: 'relax', label: '10秒放松', icon: 'relax' },
   { key: 'encourage', label: '随机鼓励', icon: 'encourage' }
 ];

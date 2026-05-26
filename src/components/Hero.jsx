@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 const cowLines = [
@@ -8,12 +8,26 @@ const cowLines = [
   '工作可以忙，心态记得放松。'
 ];
 
-const hiddenTools = [
-  '图片转文字：截图里的内容一键提取',
-  'PDF拆分：只把需要的几页发出去',
-  '文本去重：名单和关键词整理更快',
-  '时间戳转换：查日志时少一点头疼'
+const plantLines = [
+  '工位绿植 Buff：心情 +5',
+  '浇到赛博绿萝了，专注度回满。',
+  '今天的工位也很有生命力。'
 ];
+
+const laptopLines = [
+  '摸鱼保护已启动，请放心开小差。',
+  '工位状态：看起来非常专业。',
+  '屏幕里的你，像极了效率标兵。'
+];
+
+const hiddenTools = [
+  '图片转文字：截图内容一键提取',
+  'PDF拆分：需要哪几页就发哪几页',
+  '文本去重：名单整理更快',
+  '时间戳转换：查日志更省心'
+];
+
+const EGG_IDS = ['plant', 'cow', 'laptop', 'coffee', 'box'];
 
 function pickRandom(items, currentValue) {
   if (items.length <= 1) {
@@ -38,7 +52,12 @@ export default function Hero({
 }) {
   const [egg, setEgg] = useState(null);
   const [cowLine, setCowLine] = useState(cowLines[0]);
+  const [plantLine, setPlantLine] = useState(plantLines[0]);
+  const [laptopLine, setLaptopLine] = useState(laptopLines[0]);
   const [toolTip, setToolTip] = useState(hiddenTools[0]);
+  const [eggPanelDismissed, setEggPanelDismissed] = useState(false);
+  const [eggStats, setEggStats] = useState({ totalClicks: 0, foundKeys: [] });
+  const [fireworkToken, setFireworkToken] = useState(0);
   const bubbleMotionGroupRef = useRef(null);
   const bubbleTextGroupRef = useRef(null);
   const bubbleRevealRectRef = useRef(null);
@@ -54,7 +73,12 @@ export default function Hero({
       return undefined;
     }
 
-    const timer = window.setTimeout(() => setEgg(null), egg === 'box' ? 3600 : 1600);
+    const durations = {
+      box: 3600,
+      plant: 2200,
+      laptop: 2400
+    };
+    const timer = window.setTimeout(() => setEgg(null), durations[egg] ?? 1600);
 
     return () => window.clearTimeout(timer);
   }, [egg]);
@@ -91,10 +115,11 @@ export default function Hero({
     }
 
     const revealState = { width: 0, offset: -18 };
+
     animations.push(
       animate(motionGroup, {
         opacity: [0, 1],
-        duration: 520,
+        duration: 1120,
         ease: 'out(4)'
       })
     );
@@ -102,7 +127,7 @@ export default function Hero({
       animate(revealState, {
         width: [0, fullWidth],
         offset: [-18, 0],
-        duration: 860,
+        duration: 1720,
         ease: 'out(4)',
         onUpdate: () => {
           revealRect.setAttribute('width', String(revealState.width));
@@ -120,18 +145,58 @@ export default function Hero({
   }, []);
 
   function triggerCowEgg() {
+    registerEggClick('cow');
     setCowLine((current) => pickRandom(cowLines, current));
     setEgg('cow');
   }
 
   function triggerCoffeeEgg() {
+    registerEggClick('coffee');
     setEgg('coffee');
   }
 
+  function triggerPlantEgg() {
+    registerEggClick('plant');
+    setPlantLine((current) => pickRandom(plantLines, current));
+    setEgg('plant');
+  }
+
+  function triggerLaptopEgg() {
+    registerEggClick('laptop');
+    setLaptopLine((current) => pickRandom(laptopLines, current));
+    setEgg('laptop');
+  }
+
   function triggerBoxEgg() {
+    registerEggClick('box');
     setToolTip((current) => pickRandom(hiddenTools, current));
     setEgg('box');
   }
+
+  function registerEggClick(key) {
+    let isNewEgg = false;
+
+    setEggPanelDismissed(false);
+    setEggStats((current) => {
+      isNewEgg = !current.foundKeys.includes(key);
+
+      return {
+        totalClicks: current.totalClicks + 1,
+        foundKeys: isNewEgg ? [...current.foundKeys, key] : current.foundKeys
+      };
+    });
+
+    if (isNewEgg) {
+      setFireworkToken((current) => current + 1);
+    }
+  }
+
+  const foundEggCount = eggStats.foundKeys.length;
+  const remainingEggCount = Math.max(0, EGG_IDS.length - foundEggCount);
+  const showEggPanel = eggStats.totalClicks > 0 && !eggPanelDismissed;
+  const eggBadgeText = remainingEggCount > 0 ? `再找 ${remainingEggCount}` : '已集齐';
+  const isGrandEggCelebration = foundEggCount === EGG_IDS.length;
+  const fireworkParticleCount = isGrandEggCelebration ? 14 : 8;
 
   return (
     <section className="niuma-home__hero-card">
@@ -152,6 +217,42 @@ export default function Hero({
             来杯咖啡
           </button>
         </div>
+        {showEggPanel ? (
+          <div className="niuma-home__egg-panel" role="status" aria-live="polite">
+            {fireworkToken ? (
+              <span
+                className={`niuma-home__egg-panel-fireworks ${isGrandEggCelebration ? 'is-grand' : ''}`}
+                aria-hidden="true"
+                key={fireworkToken}
+              >
+                {Array.from({ length: fireworkParticleCount }, (_, index) => (
+                  <i key={`${fireworkToken}-${index}`} />
+                ))}
+              </span>
+            ) : null}
+            <span className="niuma-home__egg-panel-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 2.8 14.6 8l5.7.8-4.1 4 1 5.7-5.2-2.7-5.2 2.7 1-5.7-4.1-4 5.7-.8L12 2.8Z" />
+              </svg>
+            </span>
+            <div className="niuma-home__egg-panel-copy">
+              <strong>彩蛋 {foundEggCount}/{EGG_IDS.length}</strong>
+              <span>{eggStats.totalClicks} 次 · {eggBadgeText}</span>
+            </div>
+            <button
+              aria-label="关闭彩蛋提示"
+              className="niuma-home__egg-panel-close"
+              type="button"
+              onClick={() => {
+                setEggPanelDismissed(true);
+                setEggStats({ totalClicks: 0, foundKeys: [] });
+                setFireworkToken(0);
+              }}
+            >
+              <X aria-hidden="true" size={15} />
+            </button>
+          </div>
+        ) : null}
         <p className="niuma-home__hero-greeting">Hi，打工人 👋</p>
         <h1>
           欢迎来到 <span>牛马</span> 百宝箱
@@ -249,11 +350,25 @@ export default function Hero({
           </svg>
 
           <button
+            aria-label="点击盆栽"
+            className="niuma-hero-egg niuma-hero-egg--plant"
+            title="点盆栽"
+            type="button"
+            onClick={triggerPlantEgg}
+          />
+          <button
             aria-label="点击小牛"
             className="niuma-hero-egg niuma-hero-egg--cow"
             title="点小牛"
             type="button"
             onClick={triggerCowEgg}
+          />
+          <button
+            aria-label="点击电脑贴纸"
+            className="niuma-hero-egg niuma-hero-egg--laptop"
+            title="点电脑"
+            type="button"
+            onClick={triggerLaptopEgg}
           />
           <button
             aria-label="点击咖啡杯"
@@ -283,6 +398,24 @@ export default function Hero({
               <i />
               <i />
             </span>
+          ) : null}
+
+          {egg === 'plant' ? (
+            <>
+              <span className="niuma-hero-egg__plant-burst" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="niuma-hero-egg__plant-note">{plantLine}</span>
+            </>
+          ) : null}
+
+          {egg === 'laptop' ? (
+            <>
+              <span className="niuma-hero-egg__laptop-glow" aria-hidden="true" />
+              <span className="niuma-hero-egg__laptop-note">{laptopLine}</span>
+            </>
           ) : null}
 
           {egg === 'box' ? (
