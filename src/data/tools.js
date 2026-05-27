@@ -218,7 +218,7 @@ export const tools = [
         label: '转换方案',
         type: 'segmented',
         options: ['文字可编辑版', '版式还原版（图片）'],
-        defaultValue: '文字可编辑版'
+        defaultValue: '版式还原版（图片）'
       },
       {
         id: 'language',

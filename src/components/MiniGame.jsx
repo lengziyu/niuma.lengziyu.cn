@@ -297,7 +297,7 @@ function MiniFile({ file, dragging = false }) {
       !isDragging && transform
         ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)`
         : undefined,
-    opacity: file.status === 'exiting' ? 0 : isDragging ? 0 : 1
+    opacity: file.status === 'exiting' ? 0 : isDragging ? 0.2 : 1
   };
 
   return (
@@ -345,6 +345,7 @@ export default function MiniGame({
   style
 }) {
   const [game, setGame] = React.useState(() => createInitialGame(initialTime));
+  const [landingFx, setLandingFx] = React.useState(null);
   const finishSentRef = React.useRef(false);
   const binRefs = React.useRef({});
   const sensors = useSensors(
@@ -435,6 +436,32 @@ export default function MiniGame({
         feedbackKind: null
       }));
     }, 420);
+  }
+
+  function playLandingFx(file, sourceRect, targetRect) {
+    if (!file || !sourceRect || !targetRect) {
+      return;
+    }
+
+    const fxId = `${file.id}-${Date.now()}`;
+    const startLeft = sourceRect.left + sourceRect.width / 2 - 36;
+    const startTop = sourceRect.top + sourceRect.height / 2 - 38;
+    const targetLeft = targetRect.left + targetRect.width / 2 - 34;
+    const targetTop = targetRect.top + targetRect.height / 2 - 34;
+
+    setLandingFx({
+      id: fxId,
+      label: file.label,
+      type: file.type,
+      startLeft,
+      startTop,
+      deltaX: targetLeft - startLeft,
+      deltaY: targetTop - startTop
+    });
+
+    window.setTimeout(() => {
+      setLandingFx((current) => (current?.id === fxId ? null : current));
+    }, 460);
   }
 
   function registerBinRef(type, node) {
@@ -540,7 +567,7 @@ export default function MiniGame({
       return;
     }
 
-    setGame((current) => ({ ...current, activeId: String(event.active.id) }));
+    setGame((current) => ({ ...current, activeId: String(event.active.id), hoverBin: null }));
   }
 
   function handleDragOver(event) {
@@ -581,12 +608,15 @@ export default function MiniGame({
 
     if (file.type === binId) {
       const nextScore = game.score + 10;
+      const sourceRect = event.active.rect.current.translated ?? event.active.rect.current.initial;
+      const targetRect = binRefs.current[binId]?.getBoundingClientRect?.() ?? null;
 
       setGame((current) => ({
         ...current,
         feedbackBin: binId,
         feedbackKind: 'success'
       }));
+      playLandingFx(file, sourceRect, targetRect);
       removeFileWithAnimation(fileId, nextScore, miniGameTips.success);
       clearFeedbackSoon();
       return;
@@ -704,6 +734,20 @@ export default function MiniGame({
             ) : null}
           </DragOverlay>
         </DndContext>
+
+        {landingFx ? (
+          <div
+            className="niuma-file-chip niuma-file-chip--landing"
+            style={{
+              left: `${landingFx.startLeft}px`,
+              top: `${landingFx.startTop}px`,
+              '--landing-x': `${landingFx.deltaX}px`,
+              '--landing-y': `${landingFx.deltaY}px`
+            }}
+          >
+            <MiniFileArt label={landingFx.label} type={landingFx.type} />
+          </div>
+        ) : null}
 
         <div className="niuma-game__footer">
           <div className="niuma-game__footer-copy">

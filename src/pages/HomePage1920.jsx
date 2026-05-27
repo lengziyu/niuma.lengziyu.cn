@@ -49,7 +49,9 @@ export default function HomePage1920() {
   const visibleTools = useMemo(() => {
     let list =
       activeTab === 'recommended'
-        ? catalog.filter((tool) => tool.isRecommended)
+        ? catalog
+            .filter((tool) => tool.isRecommended)
+            .sort((a, b) => a.recommendedOrder - b.recommendedOrder)
         : catalog;
 
     if (favoritesOnly) {

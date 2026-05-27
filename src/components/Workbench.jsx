@@ -753,7 +753,7 @@ export default function Workbench({ tool }) {
           } : f));
           continue;
         } else if (tool.id === 'pdf-to-word') {
-          blob = await convertPdfToWordOnServer(item.file, settings.layout || '文字可编辑版');
+          blob = await convertPdfToWordOnServer(item.file, settings.layout || '版式还原版（图片）');
           outputName = item.name.replace(/\.pdf$/i, '.docx');
         } else if (tool.id === 'word-to-pdf') {
           blob = await callServerApi('/api/word-to-pdf', item.file);

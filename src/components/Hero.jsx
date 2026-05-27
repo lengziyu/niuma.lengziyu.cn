@@ -32,35 +32,6 @@ const titleLines = [
   '今天的你，比待办清单还靠谱。'
 ];
 
-const coffeeBrands = [
-  {
-    key: 'luckin',
-    name: '瑞幸咖啡',
-    logo: '/images/luckin-coffee-brand.svg',
-    accent: '#0022AB',
-    glow: 'rgba(0, 34, 171, 0.18)',
-    drinks: ['生椰拿铁', '丝绒拿铁', '标准美式'],
-    lines: [
-      '蓝色续命卡已到账，今天也能稳稳清醒。',
-      '瑞幸模式启动，工位效率正在回升。',
-      '先喝一口，再把待办一个个拿下。'
-    ]
-  },
-  {
-    key: 'starbucks',
-    name: '星巴克',
-    logo: '/images/starbucks-brand.svg',
-    accent: '#006241',
-    glow: 'rgba(0, 98, 65, 0.2)',
-    drinks: ['燕麦馥芮白', '冰美式', '拿铁'],
-    lines: [
-      '熟悉的咖啡香一上来，状态就回来了。',
-      '这杯负责提神，你只管慢慢开工。',
-      '今天先不硬撑，给脑子续一格电。'
-    ]
-  }
-];
-
 const hiddenTools = [
   '图片转文字：截图内容一键提取',
   'PDF拆分：需要哪几页就发哪几页',
@@ -69,6 +40,62 @@ const hiddenTools = [
 ];
 
 const EGG_IDS = ['plant', 'cow', 'laptop', 'coffee', 'box', 'hand', 'title'];
+const FIREWORK_PARTICLES = [
+  { tx: -58, ty: -38, color: '#7c4dff', delay: 0 },
+  { tx: -26, ty: -60, color: '#ffb84d', delay: 24 },
+  { tx: 8, ty: -66, color: '#84d8ff', delay: 42 },
+  { tx: 40, ty: -56, color: '#5ed6a7', delay: 58 },
+  { tx: 68, ty: -24, color: '#6ea8ff', delay: 76 },
+  { tx: 70, ty: 12, color: '#ff8fc2', delay: 92 },
+  { tx: 52, ty: 46, color: '#ffd166', delay: 108 },
+  { tx: 18, ty: 66, color: '#64e7a2', delay: 124 },
+  { tx: -18, ty: 62, color: '#ffe27a', delay: 140 },
+  { tx: -52, ty: 46, color: '#9f7cff', delay: 156 },
+  { tx: -68, ty: 12, color: '#ff8fc2', delay: 172 },
+  { tx: -70, ty: -18, color: '#8de26a', delay: 188 },
+  { tx: -88, ty: -6, color: '#84d8ff', delay: 44 },
+  { tx: -74, ty: -70, color: '#ffb84d', delay: 84 },
+  { tx: -8, ty: -92, color: '#7c4dff', delay: 108 },
+  { tx: 62, ty: -82, color: '#64e7a2', delay: 132 },
+  { tx: 96, ty: -14, color: '#ffe27a', delay: 158 },
+  { tx: 92, ty: 34, color: '#ff8fc2', delay: 184 },
+  { tx: 54, ty: 84, color: '#84d8ff', delay: 208 },
+  { tx: -2, ty: 96, color: '#ffd166', delay: 228 },
+  { tx: -58, ty: 82, color: '#7c4dff', delay: 248 },
+  { tx: -94, ty: 36, color: '#5ed6a7', delay: 268 },
+  { tx: -102, ty: -16, color: '#ffb84d', delay: 288 },
+  { tx: 106, ty: 20, color: '#9f7cff', delay: 308 }
+];
+
+function createSeededRandom(seed) {
+  let value = seed || 1;
+
+  return () => {
+    value = (value * 1664525 + 1013904223) % 4294967296;
+    return value / 4294967296;
+  };
+}
+
+function createFireworkBursts(count, seed) {
+  const random = createSeededRandom(seed);
+
+  return Array.from({ length: count }, (_, index) => {
+    const x = -92 + random() * 184;
+    const y = -48 + random() * 96;
+    const scale = 0.84 + random() * 0.54;
+    const rotation = -10 + random() * 20;
+    const delay = index * 110 + Math.round(random() * 70);
+
+    return {
+      id: `${seed}-${index}`,
+      x,
+      y,
+      scale,
+      rotation,
+      delay
+    };
+  });
+}
 
 function pickRandom(items, currentValue) {
   if (items.length <= 1) {
@@ -97,10 +124,6 @@ export default function Hero({
   const [laptopLine, setLaptopLine] = useState(laptopLines[0]);
   const [handLine, setHandLine] = useState(handLines[0]);
   const [titleLine, setTitleLine] = useState(titleLines[0]);
-  const [coffeeFxToken, setCoffeeFxToken] = useState(0);
-  const [selectedCoffeeKey, setSelectedCoffeeKey] = useState(coffeeBrands[0].key);
-  const [coffeeDrink, setCoffeeDrink] = useState(coffeeBrands[0].drinks[0]);
-  const [coffeeLine, setCoffeeLine] = useState(coffeeBrands[0].lines[0]);
   const [toolTip, setToolTip] = useState(hiddenTools[0]);
   const [eggPanelDismissed, setEggPanelDismissed] = useState(false);
   const [eggStats, setEggStats] = useState({ totalClicks: 0, foundKeys: [] });
@@ -122,14 +145,13 @@ export default function Hero({
 
     const durations = {
       box: 3600,
-      coffee: 3400,
       plant: 2200,
       laptop: 2400
     };
     const timer = window.setTimeout(() => setEgg(null), durations[egg] ?? 1600);
 
     return () => window.clearTimeout(timer);
-  }, [egg, coffeeFxToken]);
+  }, [egg]);
 
   useEffect(() => {
     const motionGroup = bubbleMotionGroupRef.current;
@@ -198,22 +220,9 @@ export default function Hero({
     setEgg('cow');
   }
 
-  function activateCoffeeMoment(key = selectedCoffeeKey, { countEgg = false } = {}) {
-    const brand = coffeeBrands.find((item) => item.key === key) ?? coffeeBrands[0];
-
-    if (countEgg) {
-      registerEggClick('coffee');
-    }
-
-    setSelectedCoffeeKey(brand.key);
-    setCoffeeDrink((current) => pickRandom(brand.drinks, current));
-    setCoffeeLine((current) => pickRandom(brand.lines, current));
-    setCoffeeFxToken((current) => current + 1);
-    setEgg('coffee');
-  }
-
   function triggerCoffeeEgg() {
-    activateCoffeeMoment(selectedCoffeeKey, { countEgg: true });
+    registerEggClick('coffee');
+    setEgg('coffee');
   }
 
   function triggerPlantEgg() {
@@ -246,10 +255,6 @@ export default function Hero({
     setEgg('title');
   }
 
-  function handleCoffeeBrandPick(key) {
-    activateCoffeeMoment(key);
-  }
-
   function registerEggClick(key) {
     let isNewEgg = false;
 
@@ -271,7 +276,7 @@ export default function Hero({
   const foundEggCount = eggStats.foundKeys.length;
   const showEggPanel = eggStats.totalClicks > 0 && !eggPanelDismissed;
   const eggEncouragementByCount = [
-    '开局就很稳，继续冲！',
+    '恭喜你找到隐藏彩蛋，继续找找看吧！',
     '手气不错，再挖一个！',
     '已经有感觉了，继续点点看！',
     '找到一半了，今天状态很在线！',
@@ -282,9 +287,10 @@ export default function Hero({
     ? '已集齐，太厉害了！'
     : eggEncouragementByCount[Math.max(0, foundEggCount - 1)];
   const isGrandEggCelebration = foundEggCount === EGG_IDS.length;
-  const fireworkParticleCount = isGrandEggCelebration ? 14 : 8;
-  const activeCoffee = coffeeBrands.find((item) => item.key === selectedCoffeeKey) ?? coffeeBrands[0];
-
+  const fireworkBursts = useMemo(
+    () => (fireworkToken ? createFireworkBursts(foundEggCount, fireworkToken) : []),
+    [fireworkToken, foundEggCount]
+  );
   return (
     <section className="niuma-home__hero-card">
       <div className="niuma-home__hero-copy">
@@ -312,8 +318,30 @@ export default function Hero({
                 aria-hidden="true"
                 key={fireworkToken}
               >
-                {Array.from({ length: fireworkParticleCount }, (_, index) => (
-                  <i key={`${fireworkToken}-${index}`} />
+                {fireworkBursts.map((burst) => (
+                  <span
+                    className="niuma-home__egg-panel-firework-burst"
+                    key={burst.id}
+                    style={{
+                      '--burst-x': `${burst.x}px`,
+                      '--burst-y': `${burst.y}px`,
+                      '--burst-scale': String(burst.scale),
+                      '--burst-rotate': `${burst.rotation}deg`,
+                      '--burst-delay': `${burst.delay}ms`
+                    }}
+                  >
+                    {FIREWORK_PARTICLES.map((particle, index) => (
+                      <i
+                        key={`${burst.id}-${index}`}
+                        style={{
+                          '--tx': `${particle.tx}px`,
+                          '--ty': `${particle.ty}px`,
+                          '--firework-color': particle.color,
+                          '--firework-delay': `${particle.delay}ms`
+                        }}
+                      />
+                    ))}
+                  </span>
                 ))}
               </span>
             ) : null}
@@ -530,62 +558,11 @@ export default function Hero({
           ) : null}
 
           {egg === 'coffee' ? (
-            <>
-              <span className="niuma-hero-coffee__fx" aria-hidden="true" key={coffeeFxToken}>
-                <span className="niuma-hero-coffee__glow" />
-                <span className="niuma-hero-coffee__ripples">
-                  <i />
-                  <i />
-                </span>
-                <span className="niuma-hero-coffee__steam">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <span className="niuma-hero-coffee__sparkles">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <b className="niuma-hero-coffee__score">续命 +1</b>
-              </span>
-
-              <div
-                className="niuma-hero-coffee__panel"
-                style={{
-                  '--coffee-accent': activeCoffee.accent,
-                  '--coffee-glow': activeCoffee.glow
-                }}
-              >
-                <div className="niuma-hero-coffee__panel-head">
-                  <strong>今天喝一杯</strong>
-                  <span>{coffeeDrink}</span>
-                </div>
-
-                <div className="niuma-hero-coffee__brands" role="list" aria-label="咖啡品牌">
-                  {coffeeBrands.map((brand) => (
-                    <button
-                      key={brand.key}
-                      aria-label={`切换到${brand.name}`}
-                      className={`niuma-hero-coffee__brand ${brand.key === activeCoffee.key ? 'is-active' : ''}`}
-                      style={{ '--coffee-brand-accent': brand.accent }}
-                      type="button"
-                      onClick={() => handleCoffeeBrandPick(brand.key)}
-                    >
-                      <img alt={`${brand.name} logo`} src={brand.logo} />
-                    </button>
-                  ))}
-                </div>
-
-                <div className="niuma-hero-coffee__copy">
-                  <div className="niuma-hero-coffee__brandline">
-                    <strong>{activeCoffee.name}</strong>
-                    <span>{coffeeDrink}</span>
-                  </div>
-                  <p>{coffeeLine}</p>
-                </div>
-              </div>
-            </>
+            <span className="niuma-hero-egg__bubbles" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
           ) : null}
 
           {egg === 'plant' ? (

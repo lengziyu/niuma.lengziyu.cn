@@ -1,0 +1,51 @@
+{
+  "id": "",
+  "name": "",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "4791340",
+      "name": "星巴克logo",
+      "font_class": "xingbakelogo",
+      "unicode": "e639",
+      "unicode_decimal": 58937
+    },
+    {
+      "icon_id": "22872868",
+      "name": "古茗",
+      "font_class": "guming",
+      "unicode": "e67f",
+      "unicode_decimal": 59007
+    },
+    {
+      "icon_id": "35930087",
+      "name": "icon-17",
+      "font_class": "icon-17",
+      "unicode": "e60d",
+      "unicode_decimal": 58893
+    },
+    {
+      "icon_id": "39406843",
+      "name": "喜茶",
+      "font_class": "xicha",
+      "unicode": "e60b",
+      "unicode_decimal": 58891
+    },
+    {
+      "icon_id": "44478967",
+      "name": "icon_瑞幸咖啡",
+      "font_class": "icon_ruixingkafei",
+      "unicode": "e60c",
+      "unicode_decimal": 58892
+    },
+    {
+      "icon_id": "46417702",
+      "name": "霸王茶姬",
+      "font_class": "bawangchaji",
+      "unicode": "e601",
+      "unicode_decimal": 58881
+    }
+  ]
+}

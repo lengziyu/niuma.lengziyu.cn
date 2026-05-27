@@ -6,7 +6,7 @@ export const headerNavItems = [
   { key: 'favorites', label: '收藏', path: '/favorites' }
 ];
 
-export const heroHotTags = ['PDF转Word', '图片压缩', '生成二维码', '文档合并'];
+export const heroHotTags = ['图片压缩', '生成二维码', '修改图片尺寸', 'PDF 转 Word'];
 
 export const featureItems = [
   {
@@ -61,7 +61,7 @@ export const miniGameTips = {
   finished: '整理好了，继续加油鸭！'
 };
 
-const recommendedToolIds = ['image-compress', 'pdf-to-word', 'word-to-pdf', 'qr-generator'];
+const recommendedToolIds = ['image-compress', 'qr-generator', 'image-resize', 'pdf-to-word'];
 
 const toolMetaMap = {
   'image-compress': {
@@ -239,7 +239,8 @@ export function getHomeToolCatalog() {
       iconKind: meta.iconKind ?? fallbackIconKind(tool.category),
       iconImage: meta.iconImage ?? null,
       accent: meta.accent ?? fallbackAccent(tool.category),
-      isRecommended: recommendedToolIds.includes(tool.id)
+      isRecommended: recommendedToolIds.includes(tool.id),
+      recommendedOrder: recommendedToolIds.indexOf(tool.id)
     };
   });
 }
