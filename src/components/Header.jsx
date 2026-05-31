@@ -7,18 +7,35 @@ import {
   ToolsNavIcon
 } from './icons/AppIcons';
 import ThemeToggle from './ThemeToggle';
+import LanguageToggle from './LanguageToggle';
 import useSegmentedIndicator from '../hooks/useSegmentedIndicator';
+
+const HEADER_COPY = {
+  zh: {
+    brandAlt: '牛马百宝箱 Logo',
+    brandName: '牛马百宝箱',
+    navAria: '主导航'
+  },
+  en: {
+    brandAlt: 'Niuma Toolbox Logo',
+    brandName: 'Niuma Toolbox',
+    navAria: 'Main navigation'
+  }
+};
 
 export default function Header({
   activeKey,
   theme,
   setTheme,
+  locale = 'zh',
+  setLocale,
   navItems,
   onNavClick,
   hidesBrand
 }) {
   const { segmentedRef, indicatorRef, updateIndicator } = useSegmentedIndicator();
   const hasAnimatedOnMountRef = React.useRef(false);
+  const copy = HEADER_COPY[locale] ?? HEADER_COPY.zh;
 
   const iconMap = {
     home: HomeNavIcon,
@@ -69,14 +86,14 @@ export default function Header({
       <div className="niuma-home__brand-slot">
         {!hidesBrand && (
           <Link className="niuma-home__brand" to="/">
-            <img alt="牛马百宝箱 Logo" src="/images/avatar-cow.png" />
-            <span>牛马百宝箱</span>
+            <img alt={copy.brandAlt} src="/images/avatar-cow.png" />
+            <span>{copy.brandName}</span>
           </Link>
         )}
       </div>
 
       <div className="niuma-home__header-controls">
-        <nav aria-label="主导航" className="niuma-home__nav" ref={segmentedRef}>
+        <nav aria-label={copy.navAria} className="niuma-home__nav" ref={segmentedRef}>
           <span
             ref={indicatorRef}
             aria-hidden="true"
@@ -102,8 +119,14 @@ export default function Header({
         </nav>
 
         <div className="niuma-home__header-actions">
+          <LanguageToggle
+            className="niuma-home__theme-btn"
+            locale={locale}
+            setLocale={setLocale}
+          />
           <ThemeToggle
             className="niuma-home__theme-btn"
+            locale={locale}
             setTheme={setTheme}
             theme={theme}
           />

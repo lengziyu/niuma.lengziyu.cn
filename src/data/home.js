@@ -1,14 +1,22 @@
 import { tools } from './tools';
+import { localizeTool } from './toolLocale';
 
-export const headerNavItems = [
+const zhHeaderNavItems = [
   { key: 'home', label: '首页', path: '/' },
   { key: 'all', label: '工具', path: '/tools' },
   { key: 'favorites', label: '收藏', path: '/favorites' }
 ];
 
-export const heroHotTags = ['图片压缩', '生成二维码', '修改图片尺寸', 'PDF 转 Word'];
+const enHeaderNavItems = [
+  { key: 'home', label: 'Home', path: '/' },
+  { key: 'all', label: 'Tools', path: '/tools' },
+  { key: 'favorites', label: 'Favorites', path: '/favorites' }
+];
 
-export const featureItems = [
+const zhHeroHotTags = ['图片压缩', '生成二维码', '修改图片尺寸', 'PDF 转 Word'];
+const enHeroHotTags = ['Compress', 'QR Code', 'Resize', 'PDF to Word'];
+
+const zhFeatureItems = [
   {
     title: '打开就能用',
     description: '无需注册登录，打开网页就能使用，简单直接。',
@@ -26,10 +34,34 @@ export const featureItems = [
   }
 ];
 
-export const cornerActions = [
+const enFeatureItems = [
+  {
+    title: 'Instantly Usable',
+    description: 'No signup required. Open and use every tool directly.',
+    icon: 'instant'
+  },
+  {
+    title: 'Local-First Processing',
+    description: 'Files are processed locally to protect privacy and data.',
+    icon: 'local'
+  },
+  {
+    title: 'Always Free',
+    description: 'All tools are free to use with no paid lock-ins.',
+    icon: 'free'
+  }
+];
+
+const zhCornerActions = [
   { key: 'coffee', label: '喝一杯', icon: 'coffee' },
   { key: 'relax', label: '10秒放松', icon: 'relax' },
   { key: 'encourage', label: '随机鼓励', icon: 'encourage' }
+];
+
+const enCornerActions = [
+  { key: 'coffee', label: 'Take a Sip', icon: 'coffee' },
+  { key: 'relax', label: '10s Relax', icon: 'relax' },
+  { key: 'encourage', label: 'Motivate Me', icon: 'encourage' }
 ];
 
 export const miniGameBoxes = [
@@ -53,7 +85,7 @@ export const miniGameFilePool = [
   { type: 'sheet', label: 'Excel' }
 ];
 
-export const miniGameTips = {
+const zhMiniGameTips = {
   idle: '拖拽文件到正确箱子里。',
   progress: '拖到正确箱子里。',
   success: '文件终于找到家啦！',
@@ -61,9 +93,17 @@ export const miniGameTips = {
   finished: '整理好了，继续加油鸭！'
 };
 
+const enMiniGameTips = {
+  idle: 'Drag files into the correct box.',
+  progress: 'Drop it into the right box.',
+  success: 'Nice! The file found its place.',
+  error: 'Oops, wrong box.',
+  finished: 'All sorted. Keep the momentum!'
+};
+
 const recommendedToolIds = ['image-compress', 'qr-generator', 'image-resize', 'pdf-to-word'];
 
-const toolMetaMap = {
+const zhToolMetaMap = {
   'image-compress': {
     title: 'PNG / JPG',
     description: '压缩图片大小，支持多种格式转换，保持高清不失真。',
@@ -194,16 +234,151 @@ const toolMetaMap = {
   }
 };
 
+const enToolMetaMap = {
+  'image-compress': {
+    title: 'PNG / JPG',
+    description: 'Reduce image size while keeping quality.',
+    keywords: ['compress image', 'PNG to JPG', 'JPG', 'PNG'],
+    format: 'PNG',
+    iconKind: 'compress',
+    accent: 'violet'
+  },
+  'image-resize': {
+    title: 'Resize',
+    description: 'Use common presets for covers, avatars, and posters.',
+    keywords: ['resize', 'crop', 'pixel'],
+    format: 'SIZE',
+    iconKind: 'resize',
+    accent: 'blue'
+  },
+  'image-convert': {
+    title: 'Convert Image',
+    description: 'Convert PNG, JPG, and WebP formats quickly.',
+    keywords: ['format conversion', 'WebP', 'JPG', 'PNG'],
+    format: 'IMG',
+    iconKind: 'convert',
+    accent: 'pink'
+  },
+  'image-to-pdf': {
+    title: 'Image to PDF',
+    description: 'Merge multiple images into one PDF.',
+    keywords: ['image to PDF', 'screenshot to PDF'],
+    format: 'IMG',
+    iconKind: 'imagepdf',
+    accent: 'amber'
+  },
+  'image-ocr': {
+    title: 'Image OCR',
+    description: 'Extract text from screenshots, posters, and scans.',
+    keywords: ['OCR', 'text recognition'],
+    format: 'OCR',
+    iconKind: 'ocr',
+    accent: 'violet'
+  },
+  'pdf-to-word': {
+    title: 'PDF',
+    description: 'Convert PDF formats, extract text, split and merge easily.',
+    keywords: ['PDF to Word', 'PDF edit', 'document conversion'],
+    format: 'PDF',
+    iconKind: 'doc',
+    accent: 'red'
+  },
+  'word-to-pdf': {
+    title: 'DOC / DOCX',
+    description: 'Convert Word docs with stable layout output.',
+    keywords: ['Word to PDF', 'DOCX', 'document export'],
+    format: 'DOC',
+    iconKind: 'doc',
+    accent: 'blue'
+  },
+  'pdf-merge': {
+    title: 'Merge Docs',
+    description: 'Merge PDFs in sequence into one clean file.',
+    keywords: ['merge PDF', 'document merge'],
+    format: 'MERGE',
+    iconKind: 'merge',
+    accent: 'violet'
+  },
+  'pdf-split': {
+    title: 'Split PDF',
+    description: 'Split PDFs by page range for easier sharing.',
+    keywords: ['split PDF', 'page extract'],
+    format: 'SPLIT',
+    iconKind: 'split',
+    accent: 'amber'
+  },
+  'pdf-to-image': {
+    title: 'PDF to Image',
+    description: 'Export PDF pages as images for quick sharing.',
+    keywords: ['PDF to image', 'PDF screenshot', 'PNG'],
+    format: 'PDF',
+    iconKind: 'pdfimg',
+    accent: 'pink'
+  },
+  'pdf-watermark': {
+    title: 'PDF Watermark',
+    description: 'Add watermark labels to drafts and internal files.',
+    keywords: ['watermark', 'internal doc'],
+    format: 'MARK',
+    iconKind: 'watermark',
+    accent: 'red'
+  },
+  'excel-to-csv': {
+    title: 'Excel to CSV',
+    description: 'Useful for imports, exchange, and batch cleanup.',
+    keywords: ['sheet conversion', 'CSV', 'Excel'],
+    format: 'XLS',
+    iconKind: 'sheet',
+    accent: 'green'
+  },
+  'csv-to-excel': {
+    title: 'CSV to Excel',
+    description: 'Turn raw CSV into Excel for easier handoff.',
+    keywords: ['CSV to Excel', 'sheet'],
+    format: 'CSV',
+    iconKind: 'sheet',
+    accent: 'green'
+  },
+  'text-dedup': {
+    title: 'Text Dedup',
+    description: 'Remove duplicates from names and keywords quickly.',
+    keywords: ['text process', 'deduplicate'],
+    format: 'TXT',
+    iconKind: 'text',
+    accent: 'violet'
+  },
+  'qr-generator': {
+    title: 'QR Generator',
+    description: 'Generate QR codes for links and text with custom styles.',
+    keywords: ['QR code', 'share link'],
+    format: 'QR',
+    iconKind: 'qr',
+    accent: 'green'
+  },
+  'timestamp-convert': {
+    title: 'Timestamp',
+    description: 'Convert timestamps and dates for logs and APIs.',
+    keywords: ['time', 'date', 'log'],
+    format: 'TIME',
+    iconKind: 'time',
+    accent: 'amber'
+  }
+};
+
+function resolveLocaleData(locale, zhValue, enValue) {
+  return locale === 'en' ? enValue : zhValue;
+}
+
 function fallbackIconKind(category) {
-  if (category.includes('图片')) {
+  if (category.includes('图片') || category.toLowerCase().includes('image')) {
     return 'convert';
   }
 
-  if (category.includes('文档')) {
+  if (category.includes('文档') || category.toLowerCase().includes('document')) {
     return 'doc';
   }
 
-  if (category.includes('表格')) {
+  if (category.includes('表格') || category.toLowerCase().includes('sheet')) {
     return 'sheet';
   }
 
@@ -211,24 +386,53 @@ function fallbackIconKind(category) {
 }
 
 function fallbackAccent(category) {
-  if (category.includes('图片')) {
+  if (category.includes('图片') || category.toLowerCase().includes('image')) {
     return 'violet';
   }
 
-  if (category.includes('文档')) {
+  if (category.includes('文档') || category.toLowerCase().includes('document')) {
     return 'blue';
   }
 
-  if (category.includes('表格')) {
+  if (category.includes('表格') || category.toLowerCase().includes('sheet')) {
     return 'green';
   }
 
   return 'pink';
 }
 
-export function getHomeToolCatalog() {
-  return tools.map((tool) => {
-    const meta = toolMetaMap[tool.id] ?? {};
+export const headerNavItems = zhHeaderNavItems;
+export const heroHotTags = zhHeroHotTags;
+export const featureItems = zhFeatureItems;
+export const cornerActions = zhCornerActions;
+export const miniGameTips = zhMiniGameTips;
+
+export function getHeaderNavItems(locale = 'zh') {
+  return resolveLocaleData(locale, zhHeaderNavItems, enHeaderNavItems);
+}
+
+export function getHeroHotTags(locale = 'zh') {
+  return resolveLocaleData(locale, zhHeroHotTags, enHeroHotTags);
+}
+
+export function getFeatureItems(locale = 'zh') {
+  return resolveLocaleData(locale, zhFeatureItems, enFeatureItems);
+}
+
+export function getCornerActions(locale = 'zh') {
+  return resolveLocaleData(locale, zhCornerActions, enCornerActions);
+}
+
+export function getMiniGameTips(locale = 'zh') {
+  return resolveLocaleData(locale, zhMiniGameTips, enMiniGameTips);
+}
+
+export function getHomeToolCatalog(locale = 'zh') {
+  const metaMap = locale === 'en' ? enToolMetaMap : zhToolMetaMap;
+
+  return tools.map((sourceTool) => {
+    const tool = localizeTool(sourceTool, locale);
+    const meta = metaMap[tool.id] ?? {};
 
     return {
       ...tool,

@@ -5,12 +5,34 @@ import ToolCard from '../components/ToolCard';
 import { getHomeToolCatalog, matchesToolSearch } from '../data/home';
 import useFavoriteIds from '../hooks/useFavoriteIds';
 
-export default function ToolsPage() {
+const TOOLS_PAGE_COPY = {
+  zh: {
+    searchAriaLabel: '搜索工具',
+    searchPlaceholder: '搜索工具',
+    searchLabel: '搜索',
+    resultLabel: '结果',
+    resultUnit: '个工具',
+    noResultsTitle: '没有找到匹配工具',
+    noResultsHint: '试试换个关键词，比如“PDF”“图片”“二维码”。'
+  },
+  en: {
+    searchAriaLabel: 'Search tools',
+    searchPlaceholder: 'Search tools',
+    searchLabel: 'Search',
+    resultLabel: 'Results',
+    resultUnit: 'tools',
+    noResultsTitle: 'No matching tools found',
+    noResultsHint: 'Try another keyword, like “PDF”, “image”, or “QR code”.'
+  }
+};
+
+export default function ToolsPage({ locale = 'zh' }) {
+  const copy = TOOLS_PAGE_COPY[locale] ?? TOOLS_PAGE_COPY.zh;
   const [searchParams, setSearchParams] = useSearchParams();
   const searchInputRef = useRef(null);
   const searchWrapRef = useRef(null);
   const { favoriteSet, setFavoriteIds } = useFavoriteIds();
-  const allTools = useMemo(() => getHomeToolCatalog(), []);
+  const allTools = useMemo(() => getHomeToolCatalog(locale), [locale]);
   const searchKeyword = searchParams.get('q')?.trim() ?? '';
   const [toolSearch, setToolSearch] = useState(searchKeyword);
   const [searchOpen, setSearchOpen] = useState(Boolean(searchKeyword));
@@ -70,7 +92,7 @@ export default function ToolsPage() {
             onSubmit={submitToolSearch}
           >
             <button
-              aria-label="搜索工具"
+              aria-label={copy.searchAriaLabel}
               className="niuma-tools-search__icon"
               type="button"
               onClick={() => {
@@ -85,7 +107,7 @@ export default function ToolsPage() {
             </button>
             <input
               ref={searchInputRef}
-              placeholder="搜索工具"
+              placeholder={copy.searchPlaceholder}
               type="search"
               value={toolSearch}
               onBlur={(event) => {
@@ -102,8 +124,8 @@ export default function ToolsPage() {
         <main className="niuma-subpage__body">
           {searchKeyword ? (
             <div className="niuma-home__section-meta" style={{ marginBottom: 10 }}>
-              <span>搜索：{searchKeyword}</span>
-              <span>结果：{visibleTools.length} 个工具</span>
+              <span>{copy.searchLabel}: {searchKeyword}</span>
+              <span>{copy.resultLabel}: {visibleTools.length} {copy.resultUnit}</span>
             </div>
           ) : null}
           <div className="niuma-home__tool-grid niuma-home__tool-grid--full">
@@ -112,14 +134,15 @@ export default function ToolsPage() {
                 <ToolCard
                   isFavorite={favoriteSet.has(tool.id)}
                   key={tool.id}
+                  locale={locale}
                   tool={tool}
                   onToggleFavorite={toggleFavorite}
                 />
               ))
             ) : (
               <div className="niuma-home__empty-state">
-                <strong>没有找到匹配工具</strong>
-                <p>试试换个关键词，比如“PDF”“图片”“二维码”。</p>
+                <strong>{copy.noResultsTitle}</strong>
+                <p>{copy.noResultsHint}</p>
               </div>
             )}
           </div>

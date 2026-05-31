@@ -2,9 +2,25 @@ import { ArrowRight, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ToolIcon } from './ToolIllustration';
 
-export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
+const TOOL_CARD_COPY = {
+  zh: {
+    addFavorite: '收藏',
+    removeFavorite: '取消收藏',
+    keywordsAria: '常用关键词',
+    open: '打开'
+  },
+  en: {
+    addFavorite: 'Add favorite',
+    removeFavorite: 'Remove favorite',
+    keywordsAria: 'Common keywords',
+    open: 'Open'
+  }
+};
+
+export default function ToolCard({ tool, isFavorite, onToggleFavorite, locale = 'zh' }) {
   const navigate = useNavigate();
   const quickTags = tool.keywords?.slice(0, 2) ?? [];
+  const copy = TOOL_CARD_COPY[locale] ?? TOOL_CARD_COPY.zh;
 
   function handleCardClick(e) {
     // Don't navigate if clicking the favorite button
@@ -26,7 +42,7 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
           <h3>{tool.name}</h3>
         </div>
         <button
-          aria-label={isFavorite ? `取消收藏 ${tool.name}` : `收藏 ${tool.name}`}
+          aria-label={isFavorite ? `${copy.removeFavorite} ${tool.name}` : `${copy.addFavorite} ${tool.name}`}
           aria-pressed={isFavorite}
           className={`niuma-tool-card__fav ${isFavorite ? 'is-active' : ''}`}
           type="button"
@@ -42,7 +58,7 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
       <p className="niuma-tool-card__description">{tool.description}</p>
 
       {quickTags.length ? (
-        <div className="niuma-tool-card__tags" aria-label="常用关键词">
+        <div className="niuma-tool-card__tags" aria-label={copy.keywordsAria}>
           {quickTags.map((tag) => (
             <span key={tag}>{tag}</span>
           ))}
@@ -64,7 +80,7 @@ export default function ToolCard({ tool, isFavorite, onToggleFavorite }) {
           )}
         </div>
         <span className="niuma-tool-card__link">
-          <span>打开</span>
+          <span>{copy.open}</span>
           <ArrowRight aria-hidden="true" size={16} />
         </span>
       </div>

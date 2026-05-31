@@ -7,6 +7,17 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0"
     />
+    <script>
+      (() => {
+        try {
+          const theme = window.localStorage.getItem('niuma-theme') === 'dark' ? 'dark' : 'light';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.classList.toggle('dark', theme === 'dark');
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
     <title>牛马百宝箱 | 打工人工具箱</title>
     <meta
       name="description"

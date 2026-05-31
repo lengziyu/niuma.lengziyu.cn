@@ -11,7 +11,12 @@ import {
   useSensors
 } from '@dnd-kit/core';
 import { Ban, Clock3, FolderOpen, Play, RotateCcw, X } from 'lucide-react';
-import { miniGameBoxes, miniGameFilePool, miniGameTips } from '../data/home';
+import {
+  getMiniGameTips,
+  miniGameBoxes,
+  miniGameFilePool,
+  miniGameTips
+} from '../data/home';
 
 const DEFAULT_TIME = 30;
 const INITIAL_FILE_COUNT = 5;
@@ -136,7 +141,7 @@ function buildFiles(count, existingFiles = []) {
   return files;
 }
 
-function createInitialGame(initialTime) {
+function createInitialGame(initialTime, tips = miniGameTips) {
   return {
     status: 'idle',
     timeLeft: initialTime,
@@ -146,31 +151,31 @@ function createInitialGame(initialTime) {
     hoverBin: null,
     feedbackBin: null,
     feedbackKind: null,
-    tip: miniGameTips.idle,
+    tip: tips.idle,
     resultText: '',
     resultTitle: '',
     resultOpen: false
   };
 }
 
-function getResultCopy(score) {
+function getResultCopy(score, tips = miniGameTips, locale = 'zh') {
   if (score >= 120) {
     return {
-      title: miniGameTips.finished,
-      text: `本轮得分 ${score}，文件排得明明白白。`
+      title: tips.finished,
+      text: locale === 'en' ? `Score ${score}. Clean sorting.` : `本轮得分 ${score}，文件排得明明白白。`
     };
   }
 
   if (score >= 60) {
     return {
-      title: miniGameTips.finished,
-      text: `本轮得分 ${score}，手速已经很稳了。`
+      title: tips.finished,
+      text: locale === 'en' ? `Score ${score}. Nice speed.` : `本轮得分 ${score}，手速已经很稳了。`
     };
   }
 
   return {
-    title: miniGameTips.finished,
-    text: `本轮得分 ${score}，再来一局很快就顺手。`
+    title: tips.finished,
+    text: locale === 'en' ? `Score ${score}. One more round.` : `本轮得分 ${score}，再来一局很快就顺手。`
   };
 }
 
@@ -297,7 +302,7 @@ function MiniFile({ file, dragging = false }) {
       !isDragging && transform
         ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)`
         : undefined,
-    opacity: file.status === 'exiting' ? 0 : isDragging ? 0.2 : 1
+    opacity: file.status === 'exiting' ? 0 : isDragging ? 0.42 : 1
   };
 
   return (
@@ -342,15 +347,32 @@ function BinTarget({ box, onRegister, tone }) {
 export default function MiniGame({
   initialTime = DEFAULT_TIME,
   onFinish,
-  style
+  style,
+  locale = 'zh'
 }) {
-  const [game, setGame] = React.useState(() => createInitialGame(initialTime));
+  const isEn = locale === 'en';
+  const tips = React.useMemo(() => getMiniGameTips(locale), [locale]);
+  const ui = React.useMemo(
+    () => ({
+      title: isEn ? 'File Sort' : '文件整理',
+      score: isEn ? 'Score' : '得分',
+      quit: isEn ? 'Quit' : '不玩了',
+      start: isEn ? 'Start' : '开始',
+      restart: isEn ? 'Restart' : '重来',
+      correct: isEn ? 'Correct!' : '✓ 正确！',
+      wrong: isEn ? 'Wrong bin' : '✗ 放错了',
+      close: isEn ? 'Close result' : '关闭结算',
+      playAgain: isEn ? 'Play Again' : '再来一局'
+    }),
+    [isEn]
+  );
+  const [game, setGame] = React.useState(() => createInitialGame(initialTime, tips));
   const [landingFx, setLandingFx] = React.useState(null);
   const finishSentRef = React.useRef(false);
   const binRefs = React.useRef({});
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 }
+      activationConstraint: { distance: 4 }
     })
   );
 
@@ -373,7 +395,7 @@ export default function MiniGame({
         }
 
         if (current.timeLeft <= 1) {
-          const result = getResultCopy(current.score);
+          const result = getResultCopy(current.score, tips, locale);
 
           return {
             ...current,
@@ -394,7 +416,11 @@ export default function MiniGame({
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [game.status]);
+  }, [game.status, locale, tips]);
+
+  React.useEffect(() => {
+    setGame(createInitialGame(initialTime, tips));
+  }, [initialTime, tips]);
 
   React.useEffect(() => {
     if (game.status !== 'playing' || game.files.length >= MIN_VISIBLE_FILES) {
@@ -514,7 +540,7 @@ export default function MiniGame({
       hoverBin: null,
       feedbackBin: null,
       feedbackKind: null,
-      tip: miniGameTips.progress,
+      tip: tips.progress,
       resultText: '',
       resultTitle: '',
       resultOpen: false
@@ -535,7 +561,7 @@ export default function MiniGame({
 
   function cancelGame() {
     finishSentRef.current = false;
-    setGame(createInitialGame(initialTime));
+    setGame(createInitialGame(initialTime, tips));
   }
 
   function closeResult() {
@@ -617,7 +643,7 @@ export default function MiniGame({
         feedbackKind: 'success'
       }));
       playLandingFx(file, sourceRect, targetRect);
-      removeFileWithAnimation(fileId, nextScore, miniGameTips.success);
+      removeFileWithAnimation(fileId, nextScore, tips.success);
       clearFeedbackSoon();
       return;
     }
@@ -631,7 +657,7 @@ export default function MiniGame({
       hoverBin: null,
       feedbackBin: binId,
       feedbackKind: 'error',
-      tip: miniGameTips.error
+      tip: tips.error
     }));
     clearFeedbackSoon();
   }
@@ -644,12 +670,12 @@ export default function MiniGame({
       <div className="niuma-widget__header">
         <div className="niuma-widget__title">
           <FolderOpen aria-hidden="true" size={16} />
-          <span>文件整理</span>
+          <span>{ui.title}</span>
         </div>
         <div className="niuma-game__header-tools">
           {game.status === 'playing' ? (
             <div className="niuma-game__score">
-              <span>得分</span>
+              <span>{ui.score}</span>
               <strong>{game.score}</strong>
             </div>
           ) : null}
@@ -665,13 +691,13 @@ export default function MiniGame({
                 onClick={cancelGame}
               >
                 <Ban aria-hidden="true" size={14} />
-                <span>不玩了</span>
+                <span>{ui.quit}</span>
               </button>
             </>
           ) : (
             <button className="niuma-home__primary-pill niuma-game__start-btn" type="button" onClick={beginGame}>
               {game.status === 'idle' ? <Play aria-hidden="true" size={14} /> : <RotateCcw aria-hidden="true" size={14} />}
-              <span>{game.status === 'idle' ? '开始' : '重来'}</span>
+              <span>{game.status === 'idle' ? ui.start : ui.restart}</span>
             </button>
           )}
         </div>
@@ -711,7 +737,7 @@ export default function MiniGame({
                         : ''
                   }`}
                 >
-                  {game.feedbackKind === 'success' ? '✓ 正确！' : '✗ 放错了'}
+                  {game.feedbackKind === 'success' ? ui.correct : ui.wrong}
                 </div>
               ) : null}
             </div>
@@ -726,9 +752,14 @@ export default function MiniGame({
             </div>
           </div>
 
-          <DragOverlay dropAnimation={null}>
+          <DragOverlay adjustScale={false} dropAnimation={null} zIndex={60}>
             {activeFile ? (
-              <div className="niuma-file-chip niuma-file-chip--overlay">
+              <div
+                className={`niuma-file-chip niuma-file-chip--overlay ${
+                  game.hoverBin ? 'is-targeting' : ''
+                }`}
+                style={{ '--drag-rotation': `${activeFile.rotation * 0.35}deg` }}
+              >
                 <MiniFileArt label={activeFile.label} type={activeFile.type} />
               </div>
             ) : null}
@@ -761,17 +792,17 @@ export default function MiniGame({
       {game.resultOpen ? (
         <div className="niuma-game__result">
           <button
-            aria-label="关闭结算"
+            aria-label={ui.close}
             className="niuma-game__result-close"
             type="button"
             onClick={closeResult}
           >
             <X aria-hidden="true" size={14} />
           </button>
-          <strong>{game.resultTitle || getResultCopy(game.score).title}</strong>
-          <p>{game.resultText || getResultCopy(game.score).text}</p>
+          <strong>{game.resultTitle || getResultCopy(game.score, tips, locale).title}</strong>
+          <p>{game.resultText || getResultCopy(game.score, tips, locale).text}</p>
           <button className="niuma-home__ghost-pill" type="button" onClick={beginGame}>
-            再来一局
+            {ui.playAgain}
           </button>
         </div>
       ) : null}

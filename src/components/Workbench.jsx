@@ -262,7 +262,7 @@ function isImageMime(mime) {
 
 /* ─── Sub-components ─── */
 
-function DetailSelect({ options, value, onChange }) {
+function DetailSelect({ options, value, onChange, getLabel = (v) => v }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -282,7 +282,7 @@ function DetailSelect({ options, value, onChange }) {
         type="button"
         onClick={() => setOpen(!open)}
       >
-        <span>{value}</span>
+        <span>{getLabel(value)}</span>
         <ChevronDown aria-hidden="true" size={18} className={open ? 'is-open' : ''} />
       </button>
       {open && (
@@ -295,7 +295,7 @@ function DetailSelect({ options, value, onChange }) {
               onClick={() => { onChange(opt); setOpen(false); }}
             >
               {opt === value && <span className="detail-dropdown__check">✓</span>}
-              <span>{opt}</span>
+              <span>{getLabel(opt)}</span>
             </button>
           ))}
         </div>
@@ -304,7 +304,7 @@ function DetailSelect({ options, value, onChange }) {
   );
 }
 
-function DetailSegmented({ options, value, onChange }) {
+function DetailSegmented({ options, value, onChange, getLabel = (v) => v }) {
   return (
     <div className="detail-segmented" role="tablist">
       {options.map((opt) => (
@@ -314,7 +314,7 @@ function DetailSegmented({ options, value, onChange }) {
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
-        >{opt}</button>
+        >{getLabel(opt)}</button>
       ))}
     </div>
   );
@@ -441,7 +441,8 @@ function QrCanvas({ value, size, styleId, logo }) {
   );
 }
 
-function FileItem({ item, onRemove }) {
+function FileItem({ item, onRemove, locale = 'zh' }) {
+  const isEn = locale === 'en';
   const percent = item.resultSize != null && item.originSize > 0 && item.resultSize < item.originSize
     ? Math.round((1 - item.resultSize / item.originSize) * 100)
     : null;
@@ -453,7 +454,7 @@ function FileItem({ item, onRemove }) {
         <span>{formatBytes(item.originSize)}</span>
         {item.status === 'done' && item.resultSize != null && (
           <span className="detail-workbench__file-result">
-            → {formatBytes(item.resultSize)} {percent != null && percent > 0 ? `(-${percent}%)` : item.resultSize >= item.originSize ? '(已是最优)' : ''}
+            → {formatBytes(item.resultSize)} {percent != null && percent > 0 ? `(-${percent}%)` : item.resultSize >= item.originSize ? (isEn ? '(optimal)' : '(已是最优)') : ''}
           </span>
         )}
       </div>
@@ -462,7 +463,7 @@ function FileItem({ item, onRemove }) {
           <button
             className="detail-workbench__icon-btn"
             type="button"
-            title="下载"
+            title={isEn ? 'Download' : '下载'}
             onClick={() => saveAs(item.blob, item.outputName || item.name)}
           >
             <Download size={16} />
@@ -471,7 +472,7 @@ function FileItem({ item, onRemove }) {
         <button
           className="detail-workbench__icon-btn"
           type="button"
-          title="移除"
+          title={isEn ? 'Remove' : '移除'}
           onClick={() => onRemove(item.id)}
         >
           <X size={16} />
@@ -483,8 +484,8 @@ function FileItem({ item, onRemove }) {
         </div>
       )}
       {item.status === 'error' && (
-        <span className="detail-workbench__file-error" title={item.errorMessage || '处理失败'}>
-          {item.errorMessage || '处理失败'}
+        <span className="detail-workbench__file-error" title={item.errorMessage || (isEn ? 'Failed' : '处理失败')}>
+          {item.errorMessage || (isEn ? 'Failed' : '处理失败')}
         </span>
       )}
     </div>
@@ -493,7 +494,8 @@ function FileItem({ item, onRemove }) {
 
 /* ─── Text processing ─── */
 
-function buildTextPreview(tool, value, settings) {
+function buildTextPreview(tool, value, settings, locale = 'zh') {
+  const isEn = locale === 'en';
   const content = value.trim();
   if (!content) return null;
 
@@ -505,7 +507,11 @@ function buildTextPreview(tool, value, settings) {
     const unique = [];
     const seen = new Set();
     cleaned.forEach((l) => { if (!seen.has(l)) { seen.add(l); unique.push(l); } });
-    return { title: '去重结果', meta: `原始 ${cleaned.length} 行，去重后 ${unique.length} 行`, body: unique.join('\n') || '没有可输出的内容。' };
+    return {
+      title: isEn ? 'Dedup Result' : '去重结果',
+      meta: isEn ? `Input ${cleaned.length} lines, output ${unique.length} lines` : `原始 ${cleaned.length} 行，去重后 ${unique.length} 行`,
+      body: unique.join('\n') || (isEn ? 'No output content.' : '没有可输出的内容。')
+    };
   }
 
   if (tool.previewMode === 'timestamp') {
@@ -515,17 +521,124 @@ function buildTextPreview(tool, value, settings) {
       if (/^\d{10}$/.test(line)) return `${line} → ${formatDateTime(new Date(Number(line) * 1000), tz)}`;
       const parsed = new Date(line.replace(' ', 'T'));
       if (!Number.isNaN(parsed.getTime())) return `${line} → ${Math.floor(parsed.getTime() / 1000)} / ${parsed.getTime()}`;
-      return `${line} → 无法识别`;
+      return `${line} → ${isEn ? 'Unrecognized' : '无法识别'}`;
     });
-    return { title: '转换结果', meta: `共处理 ${rows.length} 条时间数据`, body: rows.join('\n') };
+    return { title: isEn ? 'Convert Result' : '转换结果', meta: isEn ? `${rows.length} lines processed` : `共处理 ${rows.length} 条时间数据`, body: rows.join('\n') };
   }
 
-  return { title: '当前内容', meta: '可继续编辑后再生成结果', body: content };
+  return { title: isEn ? 'Current Content' : '当前内容', meta: isEn ? 'Edit and generate again anytime' : '可继续编辑后再生成结果', body: content };
 }
 
 /* ─── Main Component ─── */
 
-export default function Workbench({ tool }) {
+export default function Workbench({ tool, locale = 'zh' }) {
+  const isEn = locale === 'en';
+  const displayText = useCallback((text) => {
+    if (!isEn) return text;
+    const map = {
+      '保持原格式': 'Keep original',
+      '压缩设置': 'Compression Settings',
+      '生成设置': 'Generation Settings',
+      '去重设置': 'Dedup Settings',
+      '转换设置': 'Convert Settings',
+      '水印设置': 'Watermark Settings',
+      '尺寸设置': 'Resize Settings',
+      '合并设置': 'Merge Settings',
+      '拆分设置': 'Split Settings',
+      '压缩强度': 'Compression level',
+      '目标大小': 'Target size',
+      '轻一点': 'Light',
+      '平衡': 'Balanced',
+      '更省体积': 'Smaller',
+      '保持画质优先': 'Keep quality',
+      '控制在 2MB 内': 'Within 2MB',
+      '控制在 1MB 内': 'Within 1MB',
+      '尺寸预设': 'Preset',
+      '适配方式': 'Fit mode',
+      '完整显示': 'Contain',
+      '居中裁切': 'Cover',
+      '拉伸填满': 'Stretch',
+      '导出格式': 'Export format',
+      '透明背景处理': 'Transparency',
+      '保留透明': 'Keep transparent',
+      '自动铺白底': 'White background',
+      '自动铺浅灰底': 'Light gray background',
+      '页面尺寸': 'Page size',
+      '页边距': 'Margin',
+      '紧凑': 'Compact',
+      '标准': 'Standard',
+      '识别语言': 'OCR language',
+      '中文优先': 'Chinese first',
+      '中英混排': 'Chinese + English',
+      '版式保留': 'Layout keep',
+      '纯文本': 'Plain text',
+      '尽量保留段落': 'Keep paragraphs',
+      '转换方案': 'Convert mode',
+      '文字可编辑版': 'Editable text',
+      '版式还原版（图片）': 'Layout image',
+      '文档语言': 'Document language',
+      '中文为主': 'Chinese primary',
+      '导出质量': 'Export quality',
+      '清晰打印': 'Print quality',
+      '排序方式': 'Sort',
+      '上传顺序': 'Upload order',
+      '文件名排序': 'Name order',
+      '拆分页码': 'Page range',
+      '第 1-3 页': 'Pages 1-3',
+      '第 4-6 页': 'Pages 4-6',
+      '自定义范围': 'Custom range',
+      '导出方式': 'Export mode',
+      '单个文件': 'Single file',
+      '逐页拆开': 'Split per page',
+      '导出页码': 'Pages',
+      '全部页面': 'All pages',
+      '首页': 'First page',
+      '水印内容': 'Watermark text',
+      '仅供内部使用': 'Internal use only',
+      '请勿外传': 'Do not share',
+      '位置样式': 'Position',
+      '居中斜排': 'Center diagonal',
+      '页脚': 'Footer',
+      '右上角': 'Top right',
+      '编码格式': 'Encoding',
+      '分隔符': 'Delimiter',
+      '自动识别': 'Auto detect',
+      '逗号': 'Comma',
+      '制表符': 'Tab',
+      '首行处理': 'First row',
+      '作为表头': 'As header',
+      '作为普通数据': 'As data',
+      '空白处理': 'Whitespace',
+      '自动去首尾空格': 'Trim',
+      '保留原样': 'Keep original',
+      '空行处理': 'Empty lines',
+      '忽略空行': 'Ignore empty',
+      '保留空行': 'Keep empty',
+      '内容类型': 'Content type',
+      '网页链接': 'URL',
+      '普通文本': 'Text',
+      '导出样式': 'Style',
+      '经典黑白': 'Classic',
+      '深邃黑': 'Deep black',
+      '紫罗兰': 'Violet',
+      '海洋蓝': 'Ocean blue',
+      '森林绿': 'Forest green',
+      '日落橙': 'Sunset orange',
+      '玫瑰粉': 'Rose pink',
+      '深色反白': 'Dark invert',
+      '午夜蓝': 'Midnight blue',
+      '时区': 'Time zone',
+      '输出格式': 'Output',
+      '自动判断': 'Auto',
+      '转时间戳': 'To timestamp',
+      '转日期': 'To date',
+      '公众号封面 900×383': 'Cover 900×383',
+      '工牌照 358×441': 'ID 358×441',
+      '自定义尺寸': 'Custom size'
+    };
+
+    return map[text] ?? text;
+  }, [isEn]);
   const initialValues = useMemo(
     () => Object.fromEntries(tool.settings.map((s) => [s.id, s.defaultValue])),
     [tool.settings]
@@ -841,8 +954,8 @@ export default function Workbench({ tool }) {
   }
 
   const textPreview = useMemo(
-    () => buildTextPreview(tool, textInput, settings),
-    [settings, textInput, tool]
+    () => buildTextPreview(tool, textInput, settings, locale),
+    [locale, settings, textInput, tool]
   );
 
   /* ─── Download all ─── */
@@ -865,23 +978,43 @@ export default function Workbench({ tool }) {
     if (tool.previewMode === 'qr') return QrCode;
     if (tool.previewMode === 'timestamp') return Waypoints;
     if (tool.previewMode === 'dedup') return Type;
-    if (tool.category.includes('图片')) return FileImage;
-    if (tool.category.includes('文档')) return FileText;
+    if (tool.id.startsWith('image-')) return FileImage;
+    if (tool.id.startsWith('pdf-') || tool.id.startsWith('word-')) return FileText;
     return ScanText;
   }
 
   function getCanvasCopy() {
     if (isTextMode) {
-      if (isQrMode) return { title: '输入链接到这里', hint: '支持链接、文本内容，生成结果会即时预览。' };
-      return { title: '输入内容到这里', hint: '支持多行文本粘贴，结果会在右侧同步展示。' };
+      if (isQrMode) {
+        return isEn
+          ? { title: 'Input link or text', hint: 'Live preview updates instantly.' }
+          : { title: '输入链接到这里', hint: '支持链接、文本内容，生成结果会即时预览。' };
+      }
+      return isEn
+        ? { title: 'Input content', hint: 'Paste multiple lines to process on the right.' }
+        : { title: '输入内容到这里', hint: '支持多行文本粘贴，结果会在右侧同步展示。' };
     }
     return {
-      title: '拖拽文件到这里',
-      hint: `支持 ${tool.formats.join('、')} 格式，可同时添加多个文件`
+      title: isEn ? 'Drop files here' : '拖拽文件到这里',
+      hint: isEn
+        ? `Supports ${tool.formats.join(', ')}. Multiple files allowed.`
+        : `支持 ${tool.formats.join('、')} 格式，可同时添加多个文件`
     };
   }
 
   function resultTitleFor() {
+    if (isEn) {
+      if (tool.id === 'image-compress') return 'Compression Settings';
+      if (tool.id === 'qr-generator') return 'QR Settings';
+      if (tool.id === 'text-dedup') return 'Dedup Settings';
+      if (tool.id === 'timestamp-convert') return 'Convert Settings';
+      if (tool.id === 'pdf-watermark') return 'Watermark Settings';
+      if (tool.id === 'image-resize') return 'Resize Settings';
+      if (tool.id === 'pdf-merge') return 'Merge Settings';
+      if (tool.id === 'pdf-split') return 'Split Settings';
+      return 'Tool Settings';
+    }
+
     if (tool.id === 'image-compress') return '压缩设置';
     if (tool.id === 'qr-generator') return '生成设置';
     if (tool.id === 'text-dedup') return '去重设置';
@@ -917,7 +1050,7 @@ export default function Workbench({ tool }) {
 
               <textarea
                 className="detail-workbench__textarea"
-                placeholder={tool.textPlaceholder}
+                placeholder={isEn ? 'Paste content here' : tool.textPlaceholder}
                 value={textInput}
                 onChange={(e) => { setTextInput(e.target.value); setTextProcessed(false); }}
               />
@@ -936,46 +1069,46 @@ export default function Workbench({ tool }) {
                 <>
                   <div className="detail-workbench__intro">
                     <CloudUpload aria-hidden="true" size={56} />
-                    <h2>上传图片识别文字</h2>
-                    <p>支持 PNG、JPG、WebP 格式</p>
+                    <h2>{isEn ? 'Upload image for OCR' : '上传图片识别文字'}</h2>
+                    <p>{isEn ? 'Supports PNG, JPG, and WebP' : '支持 PNG、JPG、WebP 格式'}</p>
                   </div>
                   <button
                     className="detail-workbench__choose"
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    选择图片
+                    {isEn ? 'Choose Image' : '选择图片'}
                   </button>
                 </>
               ) : (
                 <div className="detail-workbench__ocr-layout">
                   <div className="detail-workbench__ocr-image">
-                    <img src={URL.createObjectURL(fileQueue[0].file)} alt="待识别图片" />
+                    <img src={URL.createObjectURL(fileQueue[0].file)} alt={isEn ? 'Image to recognize' : '待识别图片'} />
                     <button
                       className="detail-workbench__ocr-reselect"
                       type="button"
                       onClick={() => { clearAll(); fileInputRef.current?.click(); }}
                     >
-                      重新选择
+                      {isEn ? 'Reselect' : '重新选择'}
                     </button>
                   </div>
                   {fileQueue[0]?.ocrText ? (
                     <div className="detail-workbench__ocr-result">
                       <div className="detail-workbench__ocr-result-header">
-                        <strong>识别结果</strong>
+                        <strong>{isEn ? 'OCR Result' : '识别结果'}</strong>
                         <button
                           className="detail-workbench__copy-btn"
                           type="button"
                           onClick={() => navigator.clipboard?.writeText(fileQueue[0].ocrText)}
                         >
-                          复制
+                          {isEn ? 'Copy' : '复制'}
                         </button>
                       </div>
                       <pre className="detail-workbench__ocr-text">{fileQueue[0].ocrText}</pre>
                     </div>
                   ) : fileQueue[0]?.status === 'processing' ? (
                     <div className="detail-workbench__ocr-result">
-                      <p className="detail-workbench__ocr-loading">正在识别中…</p>
+                      <p className="detail-workbench__ocr-loading">{isEn ? 'Recognizing...' : '正在识别中…'}</p>
                     </div>
                   ) : null}
                 </div>
@@ -1006,7 +1139,7 @@ export default function Workbench({ tool }) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  选择文件
+                  {isEn ? 'Choose Files' : '选择文件'}
                 </button>
               )}
 
@@ -1015,25 +1148,27 @@ export default function Workbench({ tool }) {
                   <div className="detail-workbench__file-list-header">
                     <span>
                       {tool.multiple === false
-                        ? fileQueue[0]?.name || '1 个文件'
-                        : `${fileQueue.length} 个文件${allDone ? `，已完成 ${doneCount} 个` : ''}`
+                        ? fileQueue[0]?.name || (isEn ? '1 file' : '1 个文件')
+                        : (isEn
+                          ? `${fileQueue.length} files${allDone ? `, ${doneCount} done` : ''}`
+                          : `${fileQueue.length} 个文件${allDone ? `，已完成 ${doneCount} 个` : ''}`)
                       }
                     </span>
                     <div className="detail-workbench__file-list-actions">
                       {tool.multiple !== false && (
                         <button type="button" onClick={() => fileInputRef.current?.click()}>
-                          继续添加
+                          {isEn ? 'Add More' : '继续添加'}
                         </button>
                       )}
                       <button type="button" onClick={() => { clearAll(); fileInputRef.current?.click(); }}>
-                        {tool.multiple === false ? '重新选择' : ''}
-                        <Trash2 size={14} /> {tool.multiple !== false ? '清空' : ''}
+                        {tool.multiple === false ? (isEn ? 'Reselect' : '重新选择') : ''}
+                        <Trash2 size={14} /> {tool.multiple !== false ? (isEn ? 'Clear' : '清空') : ''}
                       </button>
                     </div>
                   </div>
                   <div className="detail-workbench__file-scroll">
                     {fileQueue.map((item) => (
-                      <FileItem key={item.id} item={item} onRemove={removeFile} />
+                      <FileItem key={item.id} item={item} locale={locale} onRemove={removeFile} />
                     ))}
                   </div>
                 </div>
@@ -1051,7 +1186,7 @@ export default function Workbench({ tool }) {
           {isImageCompress ? (
             <>
               <div className="detail-field">
-                <label>压缩质量 <span className="detail-field__value">{qualityValue}%</span></label>
+                <label>{isEn ? 'Quality' : '压缩质量'} <span className="detail-field__value">{qualityValue}%</span></label>
                 <div className="detail-range">
                   <input
                     max="100"
@@ -1063,16 +1198,17 @@ export default function Workbench({ tool }) {
                     style={{ '--range-progress': `${qualityValue}%` }}
                   />
                   <div className="detail-range__labels">
-                    <span>更小体积</span>
-                    <span>更高画质</span>
+                    <span>{isEn ? 'Smaller size' : '更小体积'}</span>
+                    <span>{isEn ? 'Better quality' : '更高画质'}</span>
                   </div>
                 </div>
               </div>
 
               <div className="detail-field">
-                <label>输出格式</label>
+                <label>{isEn ? 'Output Format' : '输出格式'}</label>
                 <DetailSelect
                   options={['保持原格式', ...tool.formats]}
+                  getLabel={displayText}
                   value={outputFormat}
                   onChange={setOutputFormat}
                 />
@@ -1081,16 +1217,17 @@ export default function Workbench({ tool }) {
           ) : tool.id === 'image-resize' ? (
             <>
               <div className="detail-field">
-                <label>尺寸预设</label>
+                <label>{isEn ? 'Preset' : '尺寸预设'}</label>
                 <DetailSelect
                   options={['公众号封面 900×383', '工牌照 358×441', '自定义尺寸']}
+                  getLabel={displayText}
                   value={settings.preset}
                   onChange={(v) => handleSettingChange('preset', v)}
                 />
               </div>
 
               <div className="detail-field">
-                <label>宽度 × 高度 (px)</label>
+                <label>{isEn ? 'Width × Height (px)' : '宽度 × 高度 (px)'}</label>
                 <div className="detail-resize-dims">
                   <input
                     className="detail-resize-dims__input"
@@ -1108,7 +1245,7 @@ export default function Workbench({ tool }) {
                   <button
                     className={`detail-resize-dims__lock ${lockRatio ? 'is-locked' : ''}`}
                     type="button"
-                    title={lockRatio ? '解锁比例' : '锁定比例'}
+                    title={lockRatio ? (isEn ? 'Unlock ratio' : '解锁比例') : (isEn ? 'Lock ratio' : '锁定比例')}
                     onClick={() => {
                       if (!lockRatio) setAspectRatio(resizeWidth / resizeHeight);
                       setLockRatio(!lockRatio);
@@ -1143,9 +1280,10 @@ export default function Workbench({ tool }) {
               </div>
 
               <div className="detail-field">
-                <label>适配方式</label>
+                <label>{isEn ? 'Fit Mode' : '适配方式'}</label>
                 <DetailSegmented
                   options={['完整显示', '居中裁切', '拉伸填满']}
+                  getLabel={displayText}
                   value={settings.fit}
                   onChange={(v) => handleSettingChange('fit', v)}
                 />
@@ -1155,9 +1293,10 @@ export default function Workbench({ tool }) {
             <>
               <div className="detail-field-row">
                 <div className="detail-field detail-field--half">
-                  <label>导出样式</label>
+                  <label>{isEn ? 'Style' : '导出样式'}</label>
                   <DetailSelect
                     options={QR_STYLES.map((s) => s.label)}
+                    getLabel={displayText}
                     value={QR_STYLES.find((s) => s.id === qrStyleId)?.label || '经典黑白'}
                     onChange={(v) => {
                       const found = QR_STYLES.find((s) => s.label === v);
@@ -1166,7 +1305,7 @@ export default function Workbench({ tool }) {
                   />
                 </div>
                 <div className="detail-field detail-field--half">
-                  <label>中心 Logo</label>
+                  <label>{isEn ? 'Center Logo' : '中心 Logo'}</label>
                   <input
                     ref={qrLogoInputRef}
                     accept=".png,.jpg,.jpeg,.svg,.webp"
@@ -1192,14 +1331,14 @@ export default function Workbench({ tool }) {
                       type="button"
                       onClick={() => qrLogoInputRef.current?.click()}
                     >
-                      {qrLogo ? '更换' : '上传 Logo'}
+                      {qrLogo ? (isEn ? 'Replace' : '更换') : (isEn ? 'Upload Logo' : '上传 Logo')}
                     </button>
                   </div>
                 </div>
               </div>
 
               <div className="detail-field">
-                <label>尺寸 <span className="detail-field__value">{qrSize}px</span></label>
+                <label>{isEn ? 'Size' : '尺寸'} <span className="detail-field__value">{qrSize}px</span></label>
                 <div className="detail-qr-size-row">
                   <input
                     className="detail-resize-dims__input"
@@ -1229,7 +1368,7 @@ export default function Workbench({ tool }) {
                   <button
                     className="detail-qr-live-preview__refresh"
                     type="button"
-                    title="换一个样式"
+                    title={isEn ? 'Random style' : '换一个样式'}
                     onClick={randomQrStyle}
                   >
                     <RefreshCcw size={16} />
@@ -1246,16 +1385,18 @@ export default function Workbench({ tool }) {
           ) : (
             tool.settings.map((setting) => (
               <div className="detail-field" key={setting.id}>
-                <label>{setting.label}</label>
+                <label>{displayText(setting.label)}</label>
                 {setting.type === 'select' ? (
                   <DetailSelect
                     options={setting.options}
+                    getLabel={displayText}
                     value={settings[setting.id]}
                     onChange={(v) => handleSettingChange(setting.id, v)}
                   />
                 ) : (
                   <DetailSegmented
                     options={setting.options}
+                    getLabel={displayText}
                     value={settings[setting.id]}
                     onChange={(v) => handleSettingChange(setting.id, v)}
                   />
@@ -1274,7 +1415,7 @@ export default function Workbench({ tool }) {
               type="button"
               onClick={handleTextProcess}
             >
-              生成二维码
+              {isEn ? 'Generate QR' : '生成二维码'}
             </button>
             <button
               className="detail-workbench__action detail-workbench__action--download"
@@ -1290,7 +1431,7 @@ export default function Workbench({ tool }) {
               }}
             >
               <Download size={16} />
-              下载
+              {isEn ? 'Download' : '下载'}
             </button>
           </div>
         ) : isTextMode ? (
@@ -1300,7 +1441,7 @@ export default function Workbench({ tool }) {
             type="button"
             onClick={handleTextProcess}
           >
-            {tool.actionLabel}
+            {isEn ? 'Run' : tool.actionLabel}
           </button>
         ) : (
           <div className="detail-workbench__action-row">
@@ -1316,7 +1457,11 @@ export default function Workbench({ tool }) {
                 }
               }}
             >
-              {isProcessing ? '处理中…' : allDone ? (isImageCompress ? '重新压缩' : '重新执行') : tool.actionLabel}
+              {isProcessing
+                ? (isEn ? 'Processing...' : '处理中…')
+                : allDone
+                  ? (isImageCompress ? (isEn ? 'Compress Again' : '重新压缩') : (isEn ? 'Run Again' : '重新执行'))
+                  : (isEn ? 'Run' : tool.actionLabel)}
             </button>
             {allDone && doneCount > 0 && (
               <>
@@ -1329,7 +1474,7 @@ export default function Workbench({ tool }) {
                       if (target) { setCompareItem(target); setCompareOpen(true); setComparePosition(50); }
                     }}
                   >
-                    对比预览
+                    {isEn ? 'Compare' : '对比预览'}
                   </button>
                 )}
                 <button
@@ -1338,7 +1483,7 @@ export default function Workbench({ tool }) {
                   onClick={downloadAll}
                 >
                   <Download size={18} />
-                  {doneCount > 1 ? '打包下载' : '下载'}
+                  {doneCount > 1 ? (isEn ? 'Download ZIP' : '打包下载') : (isEn ? 'Download' : '下载')}
                 </button>
               </>
             )}
@@ -1351,11 +1496,11 @@ export default function Workbench({ tool }) {
             <div className="detail-workbench__stats">
               <article>
                 <strong>{formatBytes(fileQueue.reduce((s, f) => s + f.originSize, 0))}</strong>
-                <span>压缩前</span>
+                <span>{isEn ? 'Before' : '压缩前'}</span>
               </article>
               <article>
                 <strong>{formatBytes(fileQueue.filter((f) => f.status === 'done').reduce((s, f) => s + (f.resultSize || f.originSize), 0))}</strong>
-                <span>压缩后</span>
+                <span>{isEn ? 'After' : '压缩后'}</span>
               </article>
               <article>
                 <strong>
@@ -1363,10 +1508,10 @@ export default function Workbench({ tool }) {
                     const totalOrigin = fileQueue.reduce((s, f) => s + f.originSize, 0);
                     const totalResult = fileQueue.filter((f) => f.status === 'done').reduce((s, f) => s + (f.resultSize || f.originSize), 0);
                     const percent = totalOrigin > 0 ? Math.round((1 - totalResult / totalOrigin) * 100) : 0;
-                    return percent > 0 ? `-${percent}%` : '已是最优';
+                    return percent > 0 ? `-${percent}%` : (isEn ? 'Optimal' : '已是最优');
                   })()}
                 </strong>
-                <span>节省</span>
+                <span>{isEn ? 'Saved' : '节省'}</span>
               </article>
             </div>
           )}
@@ -1381,7 +1526,7 @@ export default function Workbench({ tool }) {
                 type="button"
                 onClick={() => navigator.clipboard?.writeText(textPreview.body)}
               >
-                复制结果
+                {isEn ? 'Copy Result' : '复制结果'}
               </button>
             </div>
           ) : null}
@@ -1396,7 +1541,7 @@ export default function Workbench({ tool }) {
           <div className="detail-compare-modal" onClick={(e) => e.stopPropagation()}>
             <div className="detail-compare-modal__header">
               <div className="detail-compare-modal__title">
-                <h3>压缩前后对比</h3>
+                <h3>{isEn ? 'Before / After' : '压缩前后对比'}</h3>
                 <span>{compareItem.name}</span>
               </div>
               <button type="button" onClick={() => setCompareOpen(false)}>
@@ -1404,7 +1549,7 @@ export default function Workbench({ tool }) {
               </button>
             </div>
             {compareableFiles.length > 1 ? (
-              <div className="detail-compare-modal__thumb-strip" role="tablist" aria-label="切换对比文件">
+              <div className="detail-compare-modal__thumb-strip" role="tablist" aria-label={isEn ? 'Switch compare file' : '切换对比文件'}>
                 {compareableFiles.map((item) => {
                   const urls = previewUrls[item.id];
                   const thumbSrc = urls?.result || urls?.original;
@@ -1428,15 +1573,15 @@ export default function Workbench({ tool }) {
             <div className="detail-compare-modal__body">
               <div className="detail-compare-slider" style={{ '--compare-pos': `${comparePosition}%` }}>
                 <div className="detail-compare-slider__before">
-                  <img src={comparePreviewUrls?.original} alt="压缩前" />
+                  <img src={comparePreviewUrls?.original} alt={isEn ? 'Before' : '压缩前'} />
                   <span className="detail-compare-slider__label detail-compare-slider__label--before">
-                    压缩前 · {formatBytes(compareItem.originSize)}
+                    {isEn ? 'Before' : '压缩前'} · {formatBytes(compareItem.originSize)}
                   </span>
                 </div>
                 <div className="detail-compare-slider__after">
-                  <img src={comparePreviewUrls?.result} alt="压缩后" />
+                  <img src={comparePreviewUrls?.result} alt={isEn ? 'After' : '压缩后'} />
                   <span className="detail-compare-slider__label detail-compare-slider__label--after">
-                    压缩后 · {formatBytes(compareItem.resultSize)}
+                    {isEn ? 'After' : '压缩后'} · {formatBytes(compareItem.resultSize)}
                   </span>
                 </div>
                 <input
@@ -1450,7 +1595,7 @@ export default function Workbench({ tool }) {
                 <div className="detail-compare-slider__handle" />
               </div>
             </div>
-            <p className="detail-compare-modal__hint">← 拖动滑块对比压缩效果 →</p>
+            <p className="detail-compare-modal__hint">{isEn ? '← Drag slider to compare →' : '← 拖动滑块对比压缩效果 →'}</p>
           </div>
         </div>
       )}

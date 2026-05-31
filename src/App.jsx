@@ -1,16 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Header from './components/Header';
-import { headerNavItems } from './data/home';
+import { getHeaderNavItems } from './data/home';
 import FavoritesPage from './pages/FavoritesPage';
 import HomePage from './pages/HomePage';
 import ToolPage from './pages/ToolPage';
 import ToolsPage from './pages/ToolsPage';
 import BossMode from './components/BossMode';
+import {
+  LOCALE_STORAGE_KEY,
+  readStoredLocale
+} from './i18n/locale';
 import './styles/boss.css';
 
-const BOSS_TITLE = '企业智能工作台 - 数据中心';
-const NORMAL_TITLE = '牛马百宝箱 | 打工人工具箱';
+const APP_COPY = {
+  zh: {
+    bossTitle: '企业智能工作台 - 数据中心',
+    normalTitle: '牛马百宝箱 | 打工人工具箱',
+    bossExitTitle: '退出奋斗模式 (Ctrl+B)',
+    bossExitText: '退出'
+  },
+  en: {
+    bossTitle: 'Enterprise Intelligence Console - Data Center',
+    normalTitle: 'Niuma Toolbox | Productivity Toolkit',
+    bossExitTitle: 'Exit focus mode (Ctrl+B)',
+    bossExitText: 'Exit'
+  }
+};
 
 function PageTransition({ children }) {
   const location = useLocation();
@@ -24,6 +40,7 @@ function PageTransition({ children }) {
 
 export default function App() {
   const location = useLocation();
+  const [locale, setLocale] = useState(() => readStoredLocale());
   const [theme, setTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem('niuma-theme');
     return savedTheme === 'dark' ? 'dark' : 'light';
@@ -34,6 +51,8 @@ export default function App() {
   });
 
   const [bossExiting, setBossExiting] = useState(false);
+  const copy = APP_COPY[locale] ?? APP_COPY.zh;
+  const headerNavItems = getHeaderNavItems(locale);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -42,9 +61,14 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    document.documentElement.setAttribute('lang', locale === 'en' ? 'en' : 'zh-CN');
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  }, [locale]);
+
+  useEffect(() => {
     window.localStorage.setItem('niuma-boss-mode', String(bossMode));
-    document.title = bossMode ? BOSS_TITLE : NORMAL_TITLE;
-  }, [bossMode]);
+    document.title = bossMode ? copy.bossTitle : copy.normalTitle;
+  }, [bossMode, copy]);
 
   const toggleBossMode = useCallback(() => {
     if (bossMode) {
@@ -84,10 +108,10 @@ export default function App() {
           <button
             className="boss-exit-btn"
             type="button"
-            title="退出奋斗模式 (Ctrl+B)"
+            title={copy.bossExitTitle}
             onClick={toggleBossMode}
           >
-            退出
+            {copy.bossExitText}
           </button>
         </div>
       )}
@@ -101,6 +125,8 @@ export default function App() {
                 activeKey={activeKey}
                 hidesBrand={!isHomeRoute}
                 navItems={headerNavItems}
+                locale={locale}
+                setLocale={setLocale}
                 setTheme={setTheme}
                 theme={theme}
               />
@@ -111,19 +137,19 @@ export default function App() {
           <Routes>
             <Route
               path="/"
-              element={<HomePage onToggleBossMode={toggleBossMode} />}
+              element={<HomePage locale={locale} onToggleBossMode={toggleBossMode} />}
             />
             <Route
               path="/tools"
-              element={<ToolsPage />}
+              element={<ToolsPage locale={locale} />}
             />
             <Route
               path="/favorites"
-              element={<FavoritesPage />}
+              element={<FavoritesPage locale={locale} />}
             />
             <Route
               path="/tools/:toolId"
-              element={<ToolPage />}
+              element={<ToolPage locale={locale} />}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

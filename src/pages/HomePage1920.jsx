@@ -124,7 +124,7 @@ export default function HomePage1920() {
       return;
     }
 
-    setFortune((current) => createOfficeFortune(current));
+    setFortune((current) => createOfficeFortune('zh', current));
   }
 
   const relaxModal =
@@ -275,7 +275,7 @@ export default function HomePage1920() {
                 layoutMode="full1920"
                 quote={homeQuotes[quoteIndex]}
                 onAction={handleCornerAction}
-                onNextFortune={() => setFortune((current) => createOfficeFortune(current))}
+                onNextFortune={() => setFortune((current) => createOfficeFortune('zh', current))}
                 onNextQuote={() =>
                   setQuoteIndex((current) => pickAnotherIndex(homeQuotes.length, current))
                 }

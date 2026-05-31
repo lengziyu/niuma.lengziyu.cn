@@ -3,9 +3,21 @@ import ToolCard from '../components/ToolCard';
 import { getHomeToolCatalog } from '../data/home';
 import useFavoriteIds from '../hooks/useFavoriteIds';
 
-export default function FavoritesPage() {
+const FAVORITES_PAGE_COPY = {
+  zh: {
+    emptyTitle: '还没有收藏工具',
+    emptyHint: '去工具页点一下星标，收藏的工具会出现在这里。'
+  },
+  en: {
+    emptyTitle: 'No favorite tools yet',
+    emptyHint: 'Click the star on a tool card and your favorites will show up here.'
+  }
+};
+
+export default function FavoritesPage({ locale = 'zh' }) {
+  const copy = FAVORITES_PAGE_COPY[locale] ?? FAVORITES_PAGE_COPY.zh;
   const { favoriteSet, setFavoriteIds } = useFavoriteIds();
-  const allTools = useMemo(() => getHomeToolCatalog(), []);
+  const allTools = useMemo(() => getHomeToolCatalog(locale), [locale]);
   const favoriteTools = useMemo(
     () => allTools.filter((tool) => favoriteSet.has(tool.id)),
     [allTools, favoriteSet]
@@ -25,14 +37,15 @@ export default function FavoritesPage() {
                 <ToolCard
                   isFavorite
                   key={tool.id}
+                  locale={locale}
                   tool={tool}
                   onToggleFavorite={toggleFavorite}
                 />
               ))
             ) : (
               <div className="niuma-home__empty-state">
-                <strong>还没有收藏工具</strong>
-                <p>去工具页点一下星标，收藏的工具会出现在这里。</p>
+                <strong>{copy.emptyTitle}</strong>
+                <p>{copy.emptyHint}</p>
               </div>
             )}
           </div>

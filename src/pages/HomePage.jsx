@@ -12,11 +12,47 @@ import SideWidgets from '../components/SideWidgets';
 import ToolCard from '../components/ToolCard';
 import useFavoriteIds from '../hooks/useFavoriteIds';
 import {
-  featureItems,
-  getHomeToolCatalog,
-  heroHotTags
+  getCornerActions,
+  getFeatureItems,
+  getHeroHotTags,
+  getHomeToolCatalog
 } from '../data/home';
-import { createOfficeFortune, homeQuotes } from '../data/quotes';
+import { createOfficeFortune, getHomeQuotes } from '../data/quotes';
+
+const HOME_COPY = {
+  zh: {
+    closeModal: '关闭弹窗',
+    relaxDone: '好啦',
+    relaxTitle: '10 秒放松时间',
+    relaxProgress: '跟着节奏深呼吸，肩膀放松一点，眼睛离开屏幕一小会儿。',
+    relaxFinished: '休息完成，继续轻松开工吧。',
+    relaxEndEarly: '提前结束',
+    relaxBackHome: '返回首页',
+    tabsAriaLabel: '工具分类',
+    hotTab: '最热',
+    latestTab: '最新',
+    favoritesOnly: '当前显示：我的收藏',
+    moreTools: '更多工具',
+    noMatchedTools: '暂时没有匹配的工具',
+    noMatchedToolsHint: '换个关键词试试，比如“PDF”“图片”“二维码”。'
+  },
+  en: {
+    closeModal: 'Close modal',
+    relaxDone: 'Done',
+    relaxTitle: '10-Second Break',
+    relaxProgress: 'Breathe slowly, relax your shoulders, and look away from the screen for a moment.',
+    relaxFinished: 'Break complete. Let us get back to work with ease.',
+    relaxEndEarly: 'End Now',
+    relaxBackHome: 'Back to Home',
+    tabsAriaLabel: 'Tool categories',
+    hotTab: 'Hot',
+    latestTab: 'Latest',
+    favoritesOnly: 'Showing: Favorites',
+    moreTools: 'More Tools',
+    noMatchedTools: 'No matching tools yet',
+    noMatchedToolsHint: 'Try another keyword, like “PDF”, “image”, or “QR code”.'
+  }
+};
 
 function pickAnotherIndex(length, currentIndex) {
   if (length <= 1) {
@@ -32,19 +68,24 @@ function pickAnotherIndex(length, currentIndex) {
   return nextIndex;
 }
 
-export default function HomePage({ onToggleBossMode }) {
+export default function HomePage({ locale = 'zh', onToggleBossMode }) {
   const navigate = useNavigate();
+  const copy = HOME_COPY[locale] ?? HOME_COPY.zh;
   const [activeTab, setActiveTab] = useState('recommended');
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
-  const [fortune, setFortune] = useState(() => createOfficeFortune());
+  const [fortune, setFortune] = useState(() => createOfficeFortune(locale));
   const [quoteCollapsed, setQuoteCollapsed] = useState(false);
   const [relaxOpen, setRelaxOpen] = useState(false);
   const [relaxCountdown, setRelaxCountdown] = useState(10);
   const { favoriteSet, setFavoriteIds } = useFavoriteIds();
+  const homeQuotes = useMemo(() => getHomeQuotes(locale), [locale]);
+  const heroHotTags = useMemo(() => getHeroHotTags(locale), [locale]);
+  const featureItems = useMemo(() => getFeatureItems(locale), [locale]);
+  const cornerActions = useMemo(() => getCornerActions(locale), [locale]);
 
-  const catalog = useMemo(() => getHomeToolCatalog(), []);
+  const catalog = useMemo(() => getHomeToolCatalog(locale), [locale]);
 
   const visibleTools = useMemo(() => {
     let list =
@@ -61,6 +102,11 @@ export default function HomePage({ onToggleBossMode }) {
     return list;
   }, [activeTab, catalog, favoriteSet, favoritesOnly]);
   const homeTools = visibleTools.slice(0, 4);
+
+  useEffect(() => {
+    setQuoteIndex(0);
+    setFortune(createOfficeFortune(locale));
+  }, [locale]);
 
   useEffect(() => {
     if (!relaxOpen || relaxCountdown <= 0) {
@@ -124,7 +170,7 @@ export default function HomePage({ onToggleBossMode }) {
       return;
     }
 
-    setFortune((current) => createOfficeFortune(current));
+    setFortune((current) => createOfficeFortune(locale, current));
   }
 
   const relaxModal =
@@ -138,7 +184,7 @@ export default function HomePage({ onToggleBossMode }) {
           >
             <div className="niuma-home__modal-card" onClick={(event) => event.stopPropagation()}>
               <button
-                aria-label="关闭弹窗"
+                aria-label={copy.closeModal}
                 className="niuma-home__modal-close"
                 type="button"
                 onClick={() => setRelaxOpen(false)}
@@ -146,20 +192,20 @@ export default function HomePage({ onToggleBossMode }) {
                 <X aria-hidden="true" size={18} />
               </button>
               <div className="niuma-home__breath-ring">
-                <span>{relaxCountdown > 0 ? relaxCountdown : '好啦'}</span>
+                <span>{relaxCountdown > 0 ? relaxCountdown : copy.relaxDone}</span>
               </div>
-              <h3>10 秒放松时间</h3>
+              <h3>{copy.relaxTitle}</h3>
               <p>
                 {relaxCountdown > 0
-                  ? '跟着节奏深呼吸，肩膀放松一点，眼睛离开屏幕一小会儿。'
-                  : '休息完成，继续轻松开工吧。'}
+                  ? copy.relaxProgress
+                  : copy.relaxFinished}
               </p>
               <button
                 className="niuma-home__primary-pill"
                 type="button"
                 onClick={() => setRelaxOpen(false)}
               >
-                {relaxCountdown > 0 ? '提前结束' : '返回首页'}
+                {relaxCountdown > 0 ? copy.relaxEndEarly : copy.relaxBackHome}
               </button>
             </div>
           </div>,
@@ -178,6 +224,7 @@ export default function HomePage({ onToggleBossMode }) {
             <div className="niuma-home__primary">
               <Hero
                 hotTags={heroHotTags}
+                locale={locale}
                 onHotSearch={handleHotSearch}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -187,7 +234,7 @@ export default function HomePage({ onToggleBossMode }) {
               <section className="niuma-home__section">
                 <div className="niuma-home__tools-module">
                   <div className="niuma-home__section-head">
-                    <div className="niuma-home__tabs" role="tablist" aria-label="工具分类">
+                    <div className="niuma-home__tabs" role="tablist" aria-label={copy.tabsAriaLabel}>
                       <button
                         aria-selected={activeTab === 'recommended'}
                         className={activeTab === 'recommended' ? 'is-active' : ''}
@@ -198,7 +245,7 @@ export default function HomePage({ onToggleBossMode }) {
                           setFavoritesOnly(false);
                         }}
                       >
-                        最热
+                        {copy.hotTab}
                       </button>
                       <button
                         aria-selected={activeTab === 'all'}
@@ -210,18 +257,18 @@ export default function HomePage({ onToggleBossMode }) {
                           setFavoritesOnly(false);
                         }}
                       >
-                        最新
+                        {copy.latestTab}
                       </button>
                     </div>
 
                     <div className="niuma-home__section-meta">
-                      {favoritesOnly ? <span>当前显示：我的收藏</span> : null}
+                      {favoritesOnly ? <span>{copy.favoritesOnly}</span> : null}
                       <button
                         className="niuma-home__meta-link"
                         type="button"
                         onClick={() => navigate('/tools')}
                       >
-                        更多工具
+                        {copy.moreTools}
                       </button>
                     </div>
                   </div>
@@ -232,14 +279,15 @@ export default function HomePage({ onToggleBossMode }) {
                         <ToolCard
                           isFavorite={favoriteSet.has(tool.id)}
                           key={tool.id}
+                          locale={locale}
                           tool={tool}
                           onToggleFavorite={toggleFavorite}
                         />
                       ))
                     ) : (
                       <div className="niuma-home__empty-state">
-                        <strong>暂时没有匹配的工具</strong>
-                        <p>换个关键词试试，比如“PDF”“图片”“二维码”。</p>
+                        <strong>{copy.noMatchedTools}</strong>
+                        <p>{copy.noMatchedToolsHint}</p>
                       </div>
                     )}
                   </div>
@@ -273,8 +321,10 @@ export default function HomePage({ onToggleBossMode }) {
                 collapsed={quoteCollapsed}
                 fortune={fortune}
                 quote={homeQuotes[quoteIndex]}
+                locale={locale}
+                cornerActions={cornerActions}
                 onAction={handleCornerAction}
-                onNextFortune={() => setFortune((current) => createOfficeFortune(current))}
+                onNextFortune={() => setFortune((current) => createOfficeFortune(locale, current))}
                 onNextQuote={() =>
                   setQuoteIndex((current) => pickAnotherIndex(homeQuotes.length, current))
                 }

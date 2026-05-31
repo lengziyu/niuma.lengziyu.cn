@@ -1,7 +1,11 @@
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
+from threading import Lock
 from urllib.parse import quote
+from uuid import uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import fitz
@@ -10,6 +14,7 @@ from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
@@ -48,8 +53,104 @@ DOCX_TEXT_FONT = "Microsoft YaHei"
 DOCX_EAST_ASIA_FONT = "微软雅黑"
 RFONTS_RE = re.compile(rb"<w:rFonts\b[^>]*/>")
 LANG_RE = re.compile(rb"<w:lang\b[^>]*/>")
+TEA_GIFT_TTL = timedelta(hours=24)
+TEA_GIFT_MAX_QUEUE = 20
+TEA_FRIEND_ID_TTL = timedelta(days=3)
+PREFERRED_SHORT_IDS = [
+    "666", "888", "999", "520", "521", "233", "234", "345", "567", "678", "789", "123"
+]
 
 app = FastAPI(title="Niuma conversion service")
+tea_gift_inboxes: dict[str, list[dict[str, str]]] = defaultdict(list)
+tea_gift_receipts: dict[str, list[dict[str, str]]] = defaultdict(list)
+tea_friend_registry: dict[str, dict[str, str | int]] = {}
+tea_gift_lock = Lock()
+
+
+class TeaGiftRequest(BaseModel):
+    senderId: str = Field(min_length=3, max_length=3)
+    recipientId: str = Field(min_length=3, max_length=3)
+    teaKey: str = Field(min_length=1, max_length=32)
+    drinkName: str = Field(min_length=1, max_length=64)
+    sugar: str = Field(min_length=1, max_length=32)
+    temp: str = Field(min_length=1, max_length=32)
+    size: str = Field(min_length=1, max_length=32)
+
+
+class TeaFriendRegisterRequest(BaseModel):
+    clientToken: str = Field(min_length=8, max_length=80)
+    preferredId: str | None = Field(default=None, max_length=3)
+
+
+def normalize_tea_gift_id(raw_value: str, field_label: str) -> str:
+    normalized = re.sub(r"\D", "", (raw_value or "").strip())
+
+    if len(normalized) != 3:
+        raise HTTPException(status_code=400, detail=f"{field_label} 无效，请检查后重试。")
+
+    return normalized
+
+
+def cleanup_expired_tea_gifts(now: datetime) -> None:
+    cutoff = int((now - TEA_GIFT_TTL).timestamp())
+    friend_cutoff = int((now - TEA_FRIEND_ID_TTL).timestamp())
+    expired_recipient_ids = []
+    expired_friend_ids = []
+
+    for recipient_id, queue in tea_gift_inboxes.items():
+        fresh_queue = [gift for gift in queue if int(gift["createdAt"]) >= cutoff]
+
+        if fresh_queue:
+            tea_gift_inboxes[recipient_id] = fresh_queue
+        else:
+            expired_recipient_ids.append(recipient_id)
+
+    for recipient_id in expired_recipient_ids:
+        tea_gift_inboxes.pop(recipient_id, None)
+
+    expired_receipt_ids = []
+    for friend_id, queue in tea_gift_receipts.items():
+        fresh_queue = [receipt for receipt in queue if int(receipt["createdAt"]) >= cutoff]
+
+        if fresh_queue:
+            tea_gift_receipts[friend_id] = fresh_queue
+        else:
+            expired_receipt_ids.append(friend_id)
+
+    for friend_id in expired_receipt_ids:
+        tea_gift_receipts.pop(friend_id, None)
+
+    for friend_id, record in tea_friend_registry.items():
+        if int(record["claimedAt"]) < friend_cutoff:
+            expired_friend_ids.append(friend_id)
+
+    for friend_id in expired_friend_ids:
+        tea_friend_registry.pop(friend_id, None)
+
+
+def normalize_client_token(raw_value: str) -> str:
+    normalized = (raw_value or "").strip()
+    if len(normalized) < 8:
+        raise HTTPException(status_code=400, detail="设备标识无效，请刷新后重试。")
+    return normalized[:80]
+
+
+def is_friend_id_available(friend_id: str, client_token: str) -> bool:
+    record = tea_friend_registry.get(friend_id)
+    return record is None or record["clientToken"] == client_token
+
+
+def allocate_short_friend_id(client_token: str) -> str:
+    for preferred_id in PREFERRED_SHORT_IDS:
+        if is_friend_id_available(preferred_id, client_token):
+            return preferred_id
+
+    for numeric_id in range(100, 1000):
+        candidate = str(numeric_id)
+        if is_friend_id_available(candidate, client_token):
+            return candidate
+
+    raise HTTPException(status_code=503, detail="在线好友编号已满，请稍后再试。")
 
 
 def safe_docx_name(filename: str) -> str:
@@ -204,6 +305,168 @@ def convert_pdf(input_path: Path, output_path: Path, mode: str, workspace: Path)
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/api/tea-gifts/register")
+def register_tea_friend(payload: TeaFriendRegisterRequest) -> dict[str, str]:
+    client_token = normalize_client_token(payload.clientToken)
+    preferred_id = None
+
+    if payload.preferredId:
+        preferred_id = normalize_tea_gift_id(payload.preferredId, "好友 ID")
+
+    now = datetime.now(timezone.utc)
+
+    with tea_gift_lock:
+        cleanup_expired_tea_gifts(now)
+
+        for friend_id, record in tea_friend_registry.items():
+            if record["clientToken"] == client_token:
+                tea_friend_registry[friend_id]["claimedAt"] = int(now.timestamp())
+                return {"friendId": friend_id}
+
+        if preferred_id and is_friend_id_available(preferred_id, client_token):
+            next_id = preferred_id
+        else:
+            next_id = allocate_short_friend_id(client_token)
+
+        tea_friend_registry[next_id] = {
+            "clientToken": client_token,
+            "claimedAt": int(now.timestamp())
+        }
+
+    return {"friendId": next_id}
+
+
+@app.post("/api/tea-gifts/send")
+def send_tea_gift(payload: TeaGiftRequest) -> dict[str, str | int]:
+    sender_id = normalize_tea_gift_id(payload.senderId, "发送者 ID")
+    recipient_id = normalize_tea_gift_id(payload.recipientId, "好友 ID")
+
+    if sender_id == recipient_id:
+        raise HTTPException(status_code=400, detail="不能给自己送奶茶。")
+
+    now = datetime.now(timezone.utc)
+    gift = {
+        "id": uuid4().hex,
+        "senderId": sender_id,
+        "recipientId": recipient_id,
+        "teaKey": payload.teaKey.strip(),
+        "drinkName": payload.drinkName.strip(),
+        "sugar": payload.sugar.strip(),
+        "temp": payload.temp.strip(),
+        "size": payload.size.strip(),
+        "createdAt": str(int(now.timestamp()))
+    }
+
+    with tea_gift_lock:
+        cleanup_expired_tea_gifts(now)
+        queue = tea_gift_inboxes[recipient_id]
+        queue.append(gift)
+        if len(queue) > TEA_GIFT_MAX_QUEUE:
+            tea_gift_inboxes[recipient_id] = queue[-TEA_GIFT_MAX_QUEUE:]
+        queue_size = len(tea_gift_inboxes[recipient_id])
+
+    return {
+        "status": "queued",
+        "giftId": gift["id"],
+        "recipientId": recipient_id,
+        "queueSize": queue_size
+    }
+
+
+@app.get("/api/tea-gifts/inbox/{recipient_id}")
+def get_tea_gift_inbox(recipient_id: str) -> dict[str, list[dict[str, str]] | int]:
+    normalized_recipient_id = normalize_tea_gift_id(recipient_id, "好友 ID")
+
+    with tea_gift_lock:
+        cleanup_expired_tea_gifts(datetime.now(timezone.utc))
+        items = list(tea_gift_inboxes.get(normalized_recipient_id, []))
+
+    return {
+        "count": len(items),
+        "items": items
+    }
+
+
+@app.delete("/api/tea-gifts/inbox/{recipient_id}/{gift_id}")
+def acknowledge_tea_gift(recipient_id: str, gift_id: str) -> dict[str, str | int]:
+    normalized_recipient_id = normalize_tea_gift_id(recipient_id, "好友 ID")
+    normalized_gift_id = gift_id.strip()
+
+    if not normalized_gift_id:
+        raise HTTPException(status_code=400, detail="无效的奶茶礼物。")
+
+    with tea_gift_lock:
+        cleanup_expired_tea_gifts(datetime.now(timezone.utc))
+        queue = tea_gift_inboxes.get(normalized_recipient_id, [])
+        accepted_gift = next((gift for gift in queue if gift["id"] == normalized_gift_id), None)
+        next_queue = [gift for gift in queue if gift["id"] != normalized_gift_id]
+
+        if next_queue:
+            tea_gift_inboxes[normalized_recipient_id] = next_queue
+        else:
+            tea_gift_inboxes.pop(normalized_recipient_id, None)
+
+        if accepted_gift:
+            receipt = {
+                "id": uuid4().hex,
+                "giftId": accepted_gift["id"],
+                "senderId": accepted_gift["senderId"],
+                "recipientId": normalized_recipient_id,
+                "teaKey": accepted_gift["teaKey"],
+                "drinkName": accepted_gift["drinkName"],
+                "createdAt": str(int(datetime.now(timezone.utc).timestamp()))
+            }
+            receipt_queue = tea_gift_receipts[accepted_gift["senderId"]]
+            receipt_queue.append(receipt)
+            if len(receipt_queue) > TEA_GIFT_MAX_QUEUE:
+                tea_gift_receipts[accepted_gift["senderId"]] = receipt_queue[-TEA_GIFT_MAX_QUEUE:]
+
+    return {
+        "status": "acknowledged",
+        "giftId": normalized_gift_id,
+        "remaining": len(next_queue)
+    }
+
+
+@app.get("/api/tea-gifts/receipts/{friend_id}")
+def get_tea_gift_receipts(friend_id: str) -> dict[str, list[dict[str, str]] | int]:
+    normalized_friend_id = normalize_tea_gift_id(friend_id, "好友 ID")
+
+    with tea_gift_lock:
+        cleanup_expired_tea_gifts(datetime.now(timezone.utc))
+        items = list(tea_gift_receipts.get(normalized_friend_id, []))
+
+    return {
+        "count": len(items),
+        "items": items
+    }
+
+
+@app.delete("/api/tea-gifts/receipts/{friend_id}/{receipt_id}")
+def acknowledge_tea_gift_receipt(friend_id: str, receipt_id: str) -> dict[str, str | int]:
+    normalized_friend_id = normalize_tea_gift_id(friend_id, "好友 ID")
+    normalized_receipt_id = receipt_id.strip()
+
+    if not normalized_receipt_id:
+        raise HTTPException(status_code=400, detail="无效的奶茶回执。")
+
+    with tea_gift_lock:
+        cleanup_expired_tea_gifts(datetime.now(timezone.utc))
+        queue = tea_gift_receipts.get(normalized_friend_id, [])
+        next_queue = [receipt for receipt in queue if receipt["id"] != normalized_receipt_id]
+
+        if next_queue:
+            tea_gift_receipts[normalized_friend_id] = next_queue
+        else:
+            tea_gift_receipts.pop(normalized_friend_id, None)
+
+    return {
+        "status": "acknowledged",
+        "receiptId": normalized_receipt_id,
+        "remaining": len(next_queue)
+    }
 
 
 def libreoffice_convert(input_path: Path, output_format: str, output_path: Path) -> None:
