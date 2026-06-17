@@ -5,6 +5,7 @@ import json
 import re
 from tempfile import TemporaryDirectory
 from threading import Lock
+from typing import Dict, List, Optional, Union
 from urllib.parse import quote
 from uuid import uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -72,7 +73,7 @@ PREFERRED_SHORT_IDS = [
 app = FastAPI(title="Niuma conversion service")
 tea_gift_inboxes: dict[str, list[dict[str, str]]] = defaultdict(list)
 tea_gift_receipts: dict[str, list[dict[str, str]]] = defaultdict(list)
-tea_friend_registry: dict[str, dict[str, str | int]] = {}
+tea_friend_registry: Dict[str, Dict[str, Union[str, int]]] = {}
 tea_gift_lock = Lock()
 
 
@@ -101,7 +102,7 @@ class TeaGiftRequest(BaseModel):
 
 class TeaFriendRegisterRequest(BaseModel):
     clientToken: str = Field(min_length=8, max_length=80)
-    preferredId: str | None = Field(default=None, max_length=3)
+    preferredId: Optional[str] = Field(default=None, max_length=3)
 
 
 def normalize_tea_gift_id(raw_value: str, field_label: str) -> str:
@@ -405,7 +406,7 @@ def register_tea_friend(payload: TeaFriendRegisterRequest) -> dict[str, str]:
 
 
 @app.post("/api/tea-gifts/send")
-def send_tea_gift(payload: TeaGiftRequest) -> dict[str, str | int]:
+def send_tea_gift(payload: TeaGiftRequest) -> Dict[str, Union[str, int]]:
     sender_id = normalize_tea_gift_id(payload.senderId, "发送者 ID")
     recipient_id = normalize_tea_gift_id(payload.recipientId, "好友 ID")
 
@@ -442,7 +443,7 @@ def send_tea_gift(payload: TeaGiftRequest) -> dict[str, str | int]:
 
 
 @app.get("/api/tea-gifts/inbox/{recipient_id}")
-def get_tea_gift_inbox(recipient_id: str) -> dict[str, list[dict[str, str]] | int]:
+def get_tea_gift_inbox(recipient_id: str) -> Dict[str, Union[List[Dict[str, str]], int]]:
     normalized_recipient_id = normalize_tea_gift_id(recipient_id, "好友 ID")
 
     with tea_gift_lock:
@@ -456,7 +457,7 @@ def get_tea_gift_inbox(recipient_id: str) -> dict[str, list[dict[str, str]] | in
 
 
 @app.delete("/api/tea-gifts/inbox/{recipient_id}/{gift_id}")
-def acknowledge_tea_gift(recipient_id: str, gift_id: str) -> dict[str, str | int]:
+def acknowledge_tea_gift(recipient_id: str, gift_id: str) -> Dict[str, Union[str, int]]:
     normalized_recipient_id = normalize_tea_gift_id(recipient_id, "好友 ID")
     normalized_gift_id = gift_id.strip()
 
@@ -497,7 +498,7 @@ def acknowledge_tea_gift(recipient_id: str, gift_id: str) -> dict[str, str | int
 
 
 @app.get("/api/tea-gifts/receipts/{friend_id}")
-def get_tea_gift_receipts(friend_id: str) -> dict[str, list[dict[str, str]] | int]:
+def get_tea_gift_receipts(friend_id: str) -> Dict[str, Union[List[Dict[str, str]], int]]:
     normalized_friend_id = normalize_tea_gift_id(friend_id, "好友 ID")
 
     with tea_gift_lock:
@@ -511,7 +512,7 @@ def get_tea_gift_receipts(friend_id: str) -> dict[str, list[dict[str, str]] | in
 
 
 @app.delete("/api/tea-gifts/receipts/{friend_id}/{receipt_id}")
-def acknowledge_tea_gift_receipt(friend_id: str, receipt_id: str) -> dict[str, str | int]:
+def acknowledge_tea_gift_receipt(friend_id: str, receipt_id: str) -> Dict[str, Union[str, int]]:
     normalized_friend_id = normalize_tea_gift_id(friend_id, "好友 ID")
     normalized_receipt_id = receipt_id.strip()
 

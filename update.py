@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parent
 APP_DIR = Path("/opt/apps/niuma.lengziyu.cn")
 DIST_DIR = APP_DIR / "dist"
 PUBLISH_DIR = APP_DIR / "www"
+VENV_PIP = APP_DIR / ".venv" / "bin" / "pip"
+SERVER_REQUIREMENTS = APP_DIR / "server" / "requirements.txt"
 
 
 def run(command: str, cwd: Path, check: bool = True, capture: bool = False) -> str:
@@ -84,6 +86,18 @@ def sync_dist_to_publish() -> None:
     )
 
 
+def sync_python_dependencies() -> None:
+    if not SERVER_REQUIREMENTS.exists():
+        return
+
+    if not VENV_PIP.exists():
+        print(f"未找到 Python 虚拟环境: {VENV_PIP}", file=sys.stderr)
+        print("请先按 DEPLOY.md 创建 .venv 后再重启后端服务。", file=sys.stderr)
+        return
+
+    run(f"{shlex.quote(str(VENV_PIP))} install -r {shlex.quote(str(SERVER_REQUIREMENTS))}", cwd=APP_DIR)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="更新静态站点并发布到 /opt/apps/niuma.lengziyu.cn/www")
     parser.add_argument("--stash", action="store_true", help="检测到改动时自动 stash 后继续")
@@ -114,6 +128,7 @@ def main() -> None:
         print(f"版本未变化: {new_head[:8]}")
 
     run("npm ci", cwd=APP_DIR)
+    sync_python_dependencies()
     run("npm run build", cwd=APP_DIR)
 
     if not DIST_DIR.exists():
@@ -124,6 +139,7 @@ def main() -> None:
 
     print("\n发布完成。")
     print(f"Nginx 静态目录: {PUBLISH_DIR}")
+    print("后端依赖已同步；如服务正在运行，请执行: sudo systemctl restart niuma-convert")
     print("如需生效新配置，请执行: sudo nginx -t && sudo systemctl reload nginx")
 
 
