@@ -39,6 +39,22 @@ const toolLocaleMap = {
       description: 'Upload one image and extract text automatically.'
     }
   },
+  'image-id-photo-bg': {
+    en: {
+      name: 'ID Photo Background',
+      category: 'Image',
+      tagline: 'Switch ID photo backgrounds to blue, white, or red.',
+      description: 'Upload a clean-background ID photo and export a PNG.'
+    }
+  },
+  'pdf-compress': {
+    en: {
+      name: 'Compress PDF',
+      category: 'Document',
+      tagline: 'Shrink PDF attachments before uploading or sending.',
+      description: 'Clean and compress one PDF into a smaller copy.'
+    }
+  },
   'pdf-to-word': {
     en: {
       name: 'PDF to Word',
@@ -71,6 +87,22 @@ const toolLocaleMap = {
       description: 'Upload a PDF and export selected page ranges.'
     }
   },
+  'pdf-organize': {
+    en: {
+      name: 'Organize PDF Pages',
+      category: 'Document',
+      tagline: 'Delete extra pages or reorder pages before sharing.',
+      description: 'Enter a page order and export a new PDF.'
+    }
+  },
+  'pdf-unlock': {
+    en: {
+      name: 'Unlock PDF',
+      category: 'Document',
+      tagline: 'Remove PDF password protection when you know the open password.',
+      description: 'Upload an encrypted PDF and export an unlocked copy.'
+    }
+  },
   'pdf-to-image': {
     en: {
       name: 'PDF to Image',
@@ -101,6 +133,22 @@ const toolLocaleMap = {
       category: 'Sheet & Text',
       tagline: 'Convert raw CSV data back to Excel for easy editing.',
       description: 'Upload one CSV file and convert it to Excel.'
+    }
+  },
+  'excel-merge-split': {
+    en: {
+      name: 'Merge / Split Excel',
+      category: 'Sheet & Text',
+      tagline: 'Merge multiple XLSX files or split sheets into separate files.',
+      description: 'Combine workbooks or export each sheet as a zipped XLSX.'
+    }
+  },
+  'json-excel': {
+    en: {
+      name: 'JSON ↔ Excel',
+      category: 'Sheet & Text',
+      tagline: 'Convert API data and spreadsheets back and forth.',
+      description: 'Upload JSON to export Excel, or XLSX to export JSON.'
     }
   },
   'text-dedup': {

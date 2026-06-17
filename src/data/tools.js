@@ -200,6 +200,74 @@ export const tools = [
     related: ['pdf-to-word', 'image-compress', 'text-dedup']
   },
   {
+    id: 'image-id-photo-bg',
+    name: '证件照换底色',
+    category: '图片处理',
+    inputMode: 'file',
+    multiple: false,
+    tagline: '报名、入职、考试材料需要蓝底白底时，快速导出一张。',
+    description: '上传一张纯色背景证件照，选择新底色后导出 PNG。',
+    actionLabel: '更换底色',
+    successMessage: '证件照底色已更换，可以直接下载。',
+    inputLabel: '上传一张证件照图片',
+    accept: '.png,.jpg,.jpeg,.webp',
+    formats: ['PNG', 'JPG', 'WebP'],
+    settings: [
+      {
+        id: 'background',
+        label: '目标底色',
+        type: 'segmented',
+        options: ['蓝底', '白底', '红底'],
+        defaultValue: '蓝底'
+      }
+    ],
+    tips: [
+      '适合原图背景较干净的证件照。',
+      '复杂背景建议先抠图后再换底色。'
+    ],
+    sampleFile: {
+      name: '报名证件照.jpg',
+      origin: '白底',
+      result: '蓝底 PNG',
+      status: '待处理'
+    },
+    related: ['image-resize', 'image-compress', 'image-convert']
+  },
+  {
+    id: 'pdf-compress',
+    name: 'PDF 压缩',
+    category: '文档转换',
+    inputMode: 'file',
+    multiple: false,
+    tagline: '投标、报销、系统附件超限时，先把 PDF 瘦一瘦。',
+    description: '上传一个 PDF，清理冗余数据并压缩导出。',
+    actionLabel: '压缩 PDF',
+    successMessage: 'PDF 已压缩，可以直接下载。',
+    inputLabel: '上传一个 PDF 文件',
+    accept: '.pdf',
+    formats: ['PDF'],
+    settings: [
+      {
+        id: 'level',
+        label: '压缩强度',
+        type: 'segmented',
+        options: ['标准压缩', '强力压缩'],
+        defaultValue: '标准压缩'
+      }
+    ],
+    tips: [
+      '适合减少附件体积，具体压缩效果取决于原 PDF 内容。',
+      '加密 PDF 请先去密码再压缩。'
+    ],
+    sampleFile: {
+      name: '投标附件.pdf',
+      origin: '18 MB',
+      result: '更小 PDF',
+      status: '待压缩'
+    },
+    related: ['pdf-unlock', 'pdf-to-image', 'pdf-merge']
+  },
+  {
     id: 'pdf-to-word',
     name: 'PDF 转 Word',
     category: '文档转换',
@@ -274,6 +342,40 @@ export const tools = [
     related: ['pdf-to-word', 'pdf-merge', 'excel-to-csv']
   },
   {
+    id: 'pdf-organize',
+    name: 'PDF 页面整理',
+    category: '文档转换',
+    inputMode: 'file',
+    multiple: false,
+    tagline: '删除多余页、调整页序，只导出真正要发的部分。',
+    description: '输入页码顺序，按指定顺序导出新的 PDF。',
+    actionLabel: '整理页面',
+    successMessage: 'PDF 页面已整理，可以直接下载。',
+    inputLabel: '上传一个 PDF 文件',
+    accept: '.pdf',
+    formats: ['PDF'],
+    settings: [
+      {
+        id: 'pages',
+        label: '页码顺序',
+        type: 'text',
+        placeholder: '例如 1-3,5,4',
+        defaultValue: '1-3'
+      }
+    ],
+    tips: [
+      '输入 1-3,5 表示保留第 1 到 3 页和第 5 页。',
+      '输入 3,2,1 可以倒序导出前三页。'
+    ],
+    sampleFile: {
+      name: '汇报材料.pdf',
+      origin: '12 页',
+      result: '指定页序',
+      status: '待整理'
+    },
+    related: ['pdf-split', 'pdf-merge', 'pdf-compress']
+  },
+  {
     id: 'pdf-merge',
     name: 'PDF 合并',
     category: '文档转换',
@@ -304,7 +406,7 @@ export const tools = [
       result: '1 个 PDF',
       status: '待合并'
     },
-    related: ['pdf-split', 'pdf-watermark', 'image-to-pdf']
+    related: ['pdf-split', 'pdf-organize', 'image-to-pdf']
   },
   {
     id: 'pdf-split',
@@ -344,7 +446,41 @@ export const tools = [
       result: '第 1-3 页',
       status: '待拆分'
     },
-    related: ['pdf-merge', 'pdf-to-image', 'pdf-watermark']
+    related: ['pdf-merge', 'pdf-organize', 'pdf-unlock']
+  },
+  {
+    id: 'pdf-unlock',
+    name: 'PDF 去密码',
+    category: '文档转换',
+    inputMode: 'file',
+    multiple: false,
+    tagline: '知道打开密码时，去掉 PDF 密码，后续查看和归档更省心。',
+    description: '上传一个加密 PDF，输入打开密码后导出无密码版本。',
+    actionLabel: '去掉密码',
+    successMessage: 'PDF 密码已移除，可以直接下载。',
+    inputLabel: '上传一个带密码的 PDF 文件',
+    accept: '.pdf',
+    formats: ['PDF'],
+    settings: [
+      {
+        id: 'password',
+        label: '打开密码',
+        type: 'password',
+        placeholder: '输入 PDF 打开密码',
+        defaultValue: ''
+      }
+    ],
+    tips: [
+      '仅适用于你已知道打开密码的 PDF。',
+      '未加密 PDF 也可以导出一份普通副本。'
+    ],
+    sampleFile: {
+      name: '合同扫描件.pdf',
+      origin: '已加密',
+      result: '无密码 PDF',
+      status: '待处理'
+    },
+    related: ['pdf-split', 'pdf-merge', 'pdf-watermark']
   },
   {
     id: 'pdf-to-image',
@@ -384,7 +520,7 @@ export const tools = [
       result: '18 张 PNG',
       status: '待导出'
     },
-    related: ['image-convert', 'pdf-split', 'image-to-pdf']
+    related: ['image-convert', 'pdf-compress', 'image-to-pdf']
   },
   {
     id: 'pdf-watermark',
@@ -424,7 +560,7 @@ export const tools = [
       result: '已加水印',
       status: '待处理'
     },
-    related: ['pdf-merge', 'pdf-split', 'word-to-pdf']
+    related: ['pdf-merge', 'pdf-organize', 'pdf-unlock']
   },
   {
     id: 'excel-to-csv',
@@ -457,7 +593,7 @@ export const tools = [
       result: 'CSV',
       status: '待导出'
     },
-    related: ['csv-to-excel', 'word-to-pdf', 'text-dedup']
+    related: ['csv-to-excel', 'excel-merge-split', 'json-excel']
   },
   {
     id: 'csv-to-excel',
@@ -497,7 +633,75 @@ export const tools = [
       result: 'XLSX',
       status: '待导出'
     },
-    related: ['excel-to-csv', 'text-dedup', 'timestamp-convert']
+    related: ['excel-to-csv', 'excel-merge-split', 'json-excel']
+  },
+  {
+    id: 'excel-merge-split',
+    name: 'Excel 合并/拆分',
+    category: '表格与文本',
+    inputMode: 'file',
+    multiple: true,
+    tagline: '多份表格合成一个，或者把多 sheet 文件拆开交付。',
+    description: '支持多个 XLSX 合并为一个文件，也支持按工作表拆分为 ZIP。',
+    actionLabel: '处理表格',
+    successMessage: '表格已处理完成，可以直接下载。',
+    inputLabel: '上传一个或多个 XLSX 文件',
+    accept: '.xlsx',
+    formats: ['XLSX'],
+    settings: [
+      {
+        id: 'operation',
+        label: '处理方式',
+        type: 'segmented',
+        options: ['合并文件', '按工作表拆分'],
+        defaultValue: '合并文件'
+      }
+    ],
+    tips: [
+      '合并文件会把每个工作表复制到同一个 XLSX。',
+      '拆分模式会把每个工作表导出为一个独立 XLSX 并打包下载。'
+    ],
+    sampleFile: {
+      name: '各区销售表.xlsx',
+      origin: '多个 XLSX',
+      result: '合并/拆分结果',
+      status: '待处理'
+    },
+    related: ['excel-to-csv', 'csv-to-excel', 'json-excel']
+  },
+  {
+    id: 'json-excel',
+    name: 'JSON ↔ Excel',
+    category: '表格与文本',
+    inputMode: 'file',
+    multiple: false,
+    tagline: '接口数据和表格来回转，产品、运营、开发对齐更轻松。',
+    description: '上传 JSON 导出 Excel，或上传 XLSX 导出 JSON。',
+    actionLabel: '开始转换',
+    successMessage: 'JSON / Excel 已转换完成，可以直接下载。',
+    inputLabel: '上传一个 JSON 或 XLSX 文件',
+    accept: '.json,.xlsx',
+    formats: ['JSON', 'XLSX'],
+    settings: [
+      {
+        id: 'mode',
+        label: '转换方向',
+        type: 'segmented',
+        options: ['自动判断', 'JSON 转 Excel', 'Excel 转 JSON'],
+        defaultValue: '自动判断'
+      }
+    ],
+    tips: [
+      'JSON 数组对象会按字段展开为表格列。',
+      'Excel 转 JSON 会按工作表输出对象数组。'
+    ],
+    sampleFile: {
+      name: '接口返回.json',
+      origin: 'JSON',
+      result: 'XLSX / JSON',
+      status: '待转换'
+    },
+    related: ['excel-to-csv', 'csv-to-excel', 'excel-merge-split']
   },
   {
     id: 'text-dedup',

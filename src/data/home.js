@@ -144,6 +144,22 @@ const zhToolMetaMap = {
     iconKind: 'ocr',
     accent: 'violet'
   },
+  'image-id-photo-bg': {
+    title: '证件照换底',
+    description: '证件照蓝底、白底、红底快速切换。',
+    keywords: ['证件照', '换底色', '蓝底'],
+    format: 'ID',
+    iconKind: 'imagepdf',
+    accent: 'blue'
+  },
+  'pdf-compress': {
+    title: 'PDF压缩',
+    description: '清理并压缩 PDF，附件上传更省心。',
+    keywords: ['PDF压缩', '文件压缩', '附件'],
+    format: 'ZIP',
+    iconKind: 'doc',
+    accent: 'green'
+  },
   'pdf-to-word': {
     title: 'PDF',
     description: 'PDF 与多种格式互转，提取文字，拆分合并更轻松。',
@@ -176,6 +192,22 @@ const zhToolMetaMap = {
     iconKind: 'split',
     accent: 'amber'
   },
+  'pdf-organize': {
+    title: 'PDF页面整理',
+    description: '删除多余页、重排页序后导出新 PDF。',
+    keywords: ['PDF删除页面', 'PDF重排', '页码整理'],
+    format: 'PAGES',
+    iconKind: 'split',
+    accent: 'violet'
+  },
+  'pdf-unlock': {
+    title: 'PDF去密码',
+    description: '知道打开密码时，导出一份无密码 PDF。',
+    keywords: ['PDF密码', 'PDF解密', '去密码'],
+    format: 'UNLOCK',
+    iconKind: 'doc',
+    accent: 'blue'
+  },
   'pdf-to-image': {
     title: 'PDF转图片',
     description: '把文档按页导出为图片，转发到群里更直观。',
@@ -207,6 +239,22 @@ const zhToolMetaMap = {
     format: 'CSV',
     iconKind: 'sheet',
     accent: 'green'
+  },
+  'excel-merge-split': {
+    title: 'Excel合并拆分',
+    description: '多个 XLSX 合并，或按工作表拆成文件。',
+    keywords: ['Excel合并', 'Excel拆分', 'Sheet'],
+    format: 'XLS',
+    iconKind: 'sheet',
+    accent: 'blue'
+  },
+  'json-excel': {
+    title: 'JSON转Excel',
+    description: '接口数据和表格互转，协作更顺手。',
+    keywords: ['JSON', 'Excel', '接口数据'],
+    format: 'JSON',
+    iconKind: 'sheet',
+    accent: 'violet'
   },
   'text-dedup': {
     title: '文本去重',
@@ -275,6 +323,22 @@ const enToolMetaMap = {
     iconKind: 'ocr',
     accent: 'violet'
   },
+  'image-id-photo-bg': {
+    title: 'ID Photo BG',
+    description: 'Switch ID photo backgrounds quickly.',
+    keywords: ['ID photo', 'background', 'blue background'],
+    format: 'ID',
+    iconKind: 'imagepdf',
+    accent: 'blue'
+  },
+  'pdf-compress': {
+    title: 'Compress PDF',
+    description: 'Clean and compress PDF attachments.',
+    keywords: ['compress PDF', 'file size', 'attachment'],
+    format: 'ZIP',
+    iconKind: 'doc',
+    accent: 'green'
+  },
   'pdf-to-word': {
     title: 'PDF',
     description: 'Convert PDF formats, extract text, split and merge easily.',
@@ -307,6 +371,22 @@ const enToolMetaMap = {
     iconKind: 'split',
     accent: 'amber'
   },
+  'pdf-organize': {
+    title: 'Organize PDF',
+    description: 'Delete or reorder pages before exporting.',
+    keywords: ['delete PDF pages', 'reorder PDF', 'page order'],
+    format: 'PAGES',
+    iconKind: 'split',
+    accent: 'violet'
+  },
+  'pdf-unlock': {
+    title: 'Unlock PDF',
+    description: 'Remove password protection when you know the password.',
+    keywords: ['PDF password', 'unlock PDF', 'decrypt PDF'],
+    format: 'UNLOCK',
+    iconKind: 'doc',
+    accent: 'blue'
+  },
   'pdf-to-image': {
     title: 'PDF to Image',
     description: 'Export PDF pages as images for quick sharing.',
@@ -338,6 +418,22 @@ const enToolMetaMap = {
     format: 'CSV',
     iconKind: 'sheet',
     accent: 'green'
+  },
+  'excel-merge-split': {
+    title: 'Excel Merge/Split',
+    description: 'Merge XLSX files or split workbooks by sheet.',
+    keywords: ['merge Excel', 'split Excel', 'sheet'],
+    format: 'XLS',
+    iconKind: 'sheet',
+    accent: 'blue'
+  },
+  'json-excel': {
+    title: 'JSON to Excel',
+    description: 'Convert API data and sheets back and forth.',
+    keywords: ['JSON', 'Excel', 'API data'],
+    format: 'JSON',
+    iconKind: 'sheet',
+    accent: 'violet'
   },
   'text-dedup': {
     title: 'Text Dedup',

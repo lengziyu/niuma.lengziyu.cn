@@ -7611,6 +7611,33 @@ body.has-tea-arrival {
   transform: rotate(180deg);
 }
 
+.detail-text-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 1.5px solid rgba(226, 220, 244, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1b1d25;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.detail-text-input::placeholder {
+  color: #9b98aa;
+}
+
+.detail-text-input:hover {
+  border-color: rgba(125, 88, 255, 0.4);
+}
+
+.detail-text-input:focus {
+  border-color: #7d58ff;
+  box-shadow: 0 0 0 3px rgba(125, 88, 255, 0.1);
+}
+
 .detail-dropdown__menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -7683,6 +7710,20 @@ body.has-tea-arrival {
 }
 
 .dark .detail-dropdown__trigger:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.dark .detail-text-input {
+  border-color: rgba(178, 167, 255, 0.2);
+  background: rgba(30, 28, 50, 0.8);
+  color: #e8e6f0;
+}
+
+.dark .detail-text-input::placeholder {
+  color: #817a9d;
+}
+
+.dark .detail-text-input:hover {
   border-color: rgba(167, 139, 250, 0.5);
 }
 

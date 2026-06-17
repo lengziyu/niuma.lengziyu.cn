@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import json
 import re
 from tempfile import TemporaryDirectory
 from threading import Lock
@@ -20,15 +21,21 @@ from starlette.concurrency import run_in_threadpool
 
 
 def ensure_pymupdf_rect_compat() -> None:
-    if hasattr(fitz.Rect, "get_area"):
-        return
+    original_get_area = getattr(fitz.Rect, "get_area", None)
 
     def get_area(self, unit: str = "px") -> float:
+        if original_get_area is not None and unit != "pt":
+            try:
+                return original_get_area(self, unit)
+            except KeyError:
+                pass
+
         width = max(0.0, float(self.x1) - float(self.x0))
         height = max(0.0, float(self.y1) - float(self.y0))
         area = width * height
         factors = {
             "px": 1.0,
+            "pt": 1.0,
             "in": 1 / (72 * 72),
             "cm": (2.54 / 72) ** 2,
             "mm": (25.4 / 72) ** 2
@@ -44,6 +51,7 @@ from pdf2docx import Converter
 
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 MAX_UPLOAD_BYTES = 80 * 1024 * 1024
 MODE_EDITABLE = "editable_open_source"
 MODE_VISUAL = "visual_exact"
@@ -156,6 +164,50 @@ def allocate_short_friend_id(client_token: str) -> str:
 def safe_docx_name(filename: str) -> str:
     stem = Path(filename or "converted").stem.strip() or "converted"
     return f"{stem}.docx"
+
+
+def safe_sheet_title(raw_title: str, used: set[str]) -> str:
+    title = re.sub(r"[:\\/?*\[\]]", "_", raw_title or "Sheet").strip() or "Sheet"
+    title = title[:31]
+    candidate = title
+    index = 2
+
+    while candidate in used:
+        suffix = f"_{index}"
+        candidate = f"{title[:31 - len(suffix)]}{suffix}"
+        index += 1
+
+    used.add(candidate)
+    return candidate
+
+
+def parse_pdf_page_order(page_spec: str, total_pages: int) -> list[int]:
+    normalized = (page_spec or "").strip()
+    if not normalized:
+        return list(range(total_pages))
+
+    pages: list[int] = []
+    for part in re.split(r"[,，\s]+", normalized):
+        if not part:
+            continue
+
+        match = re.fullmatch(r"(\d+)(?:-(\d+))?", part)
+        if not match:
+            raise HTTPException(status_code=400, detail="页码格式无效，请使用类似 1-3,5,4 的格式。")
+
+        start = int(match.group(1))
+        end = int(match.group(2) or start)
+        step = 1 if start <= end else -1
+
+        for page_number in range(start, end + step, step):
+            if page_number < 1 or page_number > total_pages:
+                raise HTTPException(status_code=400, detail=f"页码 {page_number} 超出范围，当前 PDF 共 {total_pages} 页。")
+            pages.append(page_number - 1)
+
+    if not pages:
+        raise HTTPException(status_code=400, detail="请至少保留 1 页。")
+
+    return pages
 
 
 async def save_upload(upload: UploadFile, target: Path) -> None:
@@ -588,6 +640,161 @@ async def csv_to_excel(file: UploadFile = File(...)) -> Response:
         return Response(content=content, media_type=xlsx_mime, headers=headers)
 
 
+@app.post("/api/excel-merge")
+async def excel_merge(files: list[UploadFile] = File(...)) -> Response:
+    from openpyxl import Workbook, load_workbook
+
+    valid_files = [upload for upload in files if (upload.filename or "").lower().endswith(".xlsx")]
+    if len(valid_files) < 2:
+        raise HTTPException(status_code=400, detail="请上传至少 2 个 .xlsx 文件。")
+
+    with TemporaryDirectory(prefix="niuma-xmerge-") as tmp:
+        workspace = Path(tmp)
+        output_path = workspace / "merged.xlsx"
+        output_book = Workbook()
+        output_book.remove(output_book.active)
+        used_titles: set[str] = set()
+
+        for upload in valid_files:
+            input_path = workspace / (upload.filename or f"input-{id(upload)}.xlsx")
+            await save_upload(upload, input_path)
+            source_book = load_workbook(input_path, data_only=False)
+
+            for source_sheet in source_book.worksheets:
+                title = safe_sheet_title(f"{input_path.stem}_{source_sheet.title}", used_titles)
+                target_sheet = output_book.create_sheet(title=title)
+
+                for row in source_sheet.iter_rows():
+                    for cell in row:
+                        target_sheet.cell(row=cell.row, column=cell.column, value=cell.value)
+
+        output_book.save(output_path)
+        content = output_path.read_bytes()
+        headers = {"Content-Disposition": "attachment; filename*=UTF-8''merged.xlsx"}
+        return Response(content=content, media_type=XLSX_MIME, headers=headers)
+
+
+@app.post("/api/excel-split")
+async def excel_split(file: UploadFile = File(...)) -> Response:
+    from openpyxl import Workbook, load_workbook
+
+    if not (file.filename or "").lower().endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="请上传 .xlsx 文件。")
+
+    with TemporaryDirectory(prefix="niuma-xsplit-") as tmp:
+        workspace = Path(tmp)
+        input_path = workspace / (file.filename or "input.xlsx")
+        zip_path = workspace / "split-sheets.zip"
+        await save_upload(file, input_path)
+
+        source_book = load_workbook(input_path, data_only=False)
+        stem = Path(file.filename or "excel").stem
+
+        with ZipFile(zip_path, "w", ZIP_DEFLATED) as archive:
+            used_names: set[str] = set()
+            for source_sheet in source_book.worksheets:
+                target_book = Workbook()
+                target_sheet = target_book.active
+                target_sheet.title = safe_sheet_title(source_sheet.title, set())
+
+                for row in source_sheet.iter_rows():
+                    for cell in row:
+                        target_sheet.cell(row=cell.row, column=cell.column, value=cell.value)
+
+                filename = safe_sheet_title(f"{stem}_{source_sheet.title}", used_names) + ".xlsx"
+                sheet_path = workspace / filename
+                target_book.save(sheet_path)
+                archive.write(sheet_path, filename)
+
+        content = zip_path.read_bytes()
+        out_name = quote(f"{stem}_sheets.zip")
+        headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
+        return Response(content=content, media_type="application/zip", headers=headers)
+
+
+def rows_from_json_data(data) -> list[list[object]]:
+    if isinstance(data, list) and all(isinstance(item, dict) for item in data):
+        headers = []
+        for item in data:
+            for key in item:
+                if key not in headers:
+                    headers.append(key)
+
+        rows = [headers]
+        for item in data:
+            rows.append([
+                json.dumps(item.get(key), ensure_ascii=False) if isinstance(item.get(key), (dict, list)) else item.get(key)
+                for key in headers
+            ])
+        return rows
+
+    if isinstance(data, dict):
+        return [["key", "value"], *[
+            [key, json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else value]
+            for key, value in data.items()
+        ]]
+
+    if isinstance(data, list):
+        return [["value"], *[[json.dumps(item, ensure_ascii=False) if isinstance(item, (dict, list)) else item] for item in data]]
+
+    return [["value"], [data]]
+
+
+@app.post("/api/json-excel")
+async def json_excel(file: UploadFile = File(...)) -> Response:
+    from openpyxl import Workbook, load_workbook
+
+    fname = (file.filename or "").lower()
+    if not (fname.endswith(".json") or fname.endswith(".xlsx")):
+        raise HTTPException(status_code=400, detail="请上传 JSON 或 XLSX 文件。")
+
+    with TemporaryDirectory(prefix="niuma-json-excel-") as tmp:
+        workspace = Path(tmp)
+        input_path = workspace / (file.filename or "input")
+        await save_upload(file, input_path)
+
+        if fname.endswith(".json"):
+            try:
+                data = json.loads(input_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise HTTPException(status_code=400, detail=f"JSON 格式无效：第 {exc.lineno} 行第 {exc.colno} 列。") from exc
+
+            output_path = workspace / f"{input_path.stem}.xlsx"
+            book = Workbook()
+            sheet = book.active
+            sheet.title = "JSON"
+
+            for row in rows_from_json_data(data):
+                sheet.append(row)
+
+            book.save(output_path)
+            content = output_path.read_bytes()
+            out_name = quote(f"{input_path.stem}.xlsx")
+            headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
+            return Response(content=content, media_type=XLSX_MIME, headers=headers)
+
+        book = load_workbook(input_path, data_only=True)
+        payload = {}
+        for sheet in book.worksheets:
+            rows = list(sheet.iter_rows(values_only=True))
+            if not rows:
+                payload[sheet.title] = []
+                continue
+
+            headers = [str(value) if value is not None else f"column_{index + 1}" for index, value in enumerate(rows[0])]
+            payload[sheet.title] = [
+                {headers[index]: value for index, value in enumerate(row)}
+                for row in rows[1:]
+            ]
+
+        output_path = workspace / f"{input_path.stem}.json"
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        content = output_path.read_bytes()
+        out_name = quote(f"{input_path.stem}.json")
+        headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
+        return Response(content=content, media_type="application/json", headers=headers)
+
+
 @app.post("/api/pdf-merge")
 async def pdf_merge(files: list[UploadFile] = File(...)) -> Response:
     if len(files) < 2:
@@ -659,6 +866,82 @@ async def pdf_split(
         return Response(content=content, media_type="application/pdf", headers=headers)
 
 
+@app.post("/api/pdf-compress")
+async def pdf_compress(
+    file: UploadFile = File(...),
+    level: str = Form("标准压缩"),
+) -> Response:
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="请上传 PDF 文件。")
+
+    with TemporaryDirectory(prefix="niuma-pdf-compress-") as tmp:
+        workspace = Path(tmp)
+        input_path = workspace / "input.pdf"
+        output_path = workspace / "compressed.pdf"
+        await save_upload(file, input_path)
+
+        pdf = fitz.open(str(input_path))
+        try:
+            if pdf.needs_pass:
+                raise HTTPException(status_code=400, detail="加密 PDF 请先使用 PDF 去密码后再压缩。")
+
+            effort = 9 if level == "强力压缩" else 6
+            pdf.save(
+                str(output_path),
+                garbage=4,
+                clean=True,
+                deflate=True,
+                deflate_images=True,
+                deflate_fonts=True,
+                use_objstms=1,
+                compression_effort=effort,
+            )
+        finally:
+            pdf.close()
+
+        content = output_path.read_bytes()
+        stem = Path(file.filename or "compressed").stem
+        out_name = quote(f"{stem}_compressed.pdf")
+        headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
+        return Response(content=content, media_type="application/pdf", headers=headers)
+
+
+@app.post("/api/pdf-organize")
+async def pdf_organize(
+    file: UploadFile = File(...),
+    pages: str = Form("1-3"),
+) -> Response:
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="请上传 PDF 文件。")
+
+    with TemporaryDirectory(prefix="niuma-pdf-organize-") as tmp:
+        workspace = Path(tmp)
+        input_path = workspace / "input.pdf"
+        output_path = workspace / "organized.pdf"
+        await save_upload(file, input_path)
+
+        pdf = fitz.open(str(input_path))
+        organized = fitz.open()
+        try:
+            if pdf.needs_pass:
+                raise HTTPException(status_code=400, detail="加密 PDF 请先使用 PDF 去密码后再整理页面。")
+
+            page_order = parse_pdf_page_order(pages, pdf.page_count)
+            for page_index in page_order:
+                organized.insert_pdf(pdf, from_page=page_index, to_page=page_index)
+
+            organized.save(str(output_path), garbage=4, deflate=True)
+        finally:
+            organized.close()
+            pdf.close()
+
+        content = output_path.read_bytes()
+        stem = Path(file.filename or "organized").stem
+        out_name = quote(f"{stem}_organized.pdf")
+        headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
+        return Response(content=content, media_type="application/pdf", headers=headers)
+
+
 @app.post("/api/pdf-to-image")
 async def pdf_to_image(
     file: UploadFile = File(...),
@@ -715,6 +998,45 @@ async def pdf_to_image(
         out_name = quote(f"{stem}_images.zip")
         headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
         return Response(content=content, media_type="application/zip", headers=headers)
+
+
+@app.post("/api/pdf-unlock")
+async def pdf_unlock(
+    file: UploadFile = File(...),
+    password: str = Form(""),
+) -> Response:
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="请上传 PDF 文件。")
+
+    with TemporaryDirectory(prefix="niuma-unlock-") as tmp:
+        workspace = Path(tmp)
+        input_path = workspace / "input.pdf"
+        output_path = workspace / "unlocked.pdf"
+        await save_upload(file, input_path)
+
+        pdf = fitz.open(str(input_path))
+        try:
+            if pdf.needs_pass:
+                if not password:
+                    raise HTTPException(status_code=400, detail="请输入 PDF 打开密码。")
+
+                if not pdf.authenticate(password):
+                    raise HTTPException(status_code=400, detail="PDF 密码不正确，请检查后重试。")
+
+            pdf.save(
+                str(output_path),
+                encryption=fitz.PDF_ENCRYPT_NONE,
+                garbage=4,
+                deflate=True,
+            )
+        finally:
+            pdf.close()
+
+        content = output_path.read_bytes()
+        stem = Path(file.filename or "unlocked").stem
+        out_name = quote(f"{stem}_unlocked.pdf")
+        headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{out_name}"}
+        return Response(content=content, media_type="application/pdf", headers=headers)
 
 
 @app.post("/api/image-ocr")

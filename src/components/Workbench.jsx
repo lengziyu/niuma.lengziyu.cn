@@ -87,7 +87,7 @@ const PDF_TO_WORD_MODE_BY_LABEL = {
 };
 
 async function readApiError(response) {
-  const fallback = `PDF 转 Word 服务返回 ${response.status}`;
+  const fallback = `服务返回 ${response.status}`;
 
   try {
     const text = await response.text();
@@ -135,6 +135,32 @@ async function convertPdfToWordOnServer(file, selectedMode) {
 async function callServerApi(endpoint, file, extraFields = {}) {
   const formData = new FormData();
   formData.append('file', file, file.name);
+  for (const [key, value] of Object.entries(extraFields)) {
+    formData.append(key, value);
+  }
+
+  let response;
+  try {
+    response = await fetch(endpoint, { method: 'POST', body: formData });
+  } catch {
+    throw new Error('服务未启动或网络不可用，请确认服务端已部署。');
+  }
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response));
+  }
+
+  const blob = await response.blob();
+  if (!blob.size) {
+    throw new Error('服务没有返回有效文件，请稍后重试。');
+  }
+
+  return blob;
+}
+
+async function callServerFilesApi(endpoint, files, extraFields = {}) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file, file.name));
   for (const [key, value] of Object.entries(extraFields)) {
     formData.append(key, value);
   }
@@ -253,6 +279,88 @@ function convertImage(file, targetFormat, background) {
 
     ctx.drawImage(img, 0, 0);
     canvas.toBlob((blob) => resolve(blob), mime, 0.92);
+  });
+}
+
+function replaceIdPhotoBackground(file, targetBackground) {
+  const colorMap = {
+    '蓝底': [67, 142, 219],
+    '白底': [255, 255, 255],
+    '红底': [215, 48, 49]
+  };
+  const replacement = colorMap[targetBackground] || colorMap['蓝底'];
+
+  return new Promise(async (resolve) => {
+    const img = await loadImage(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = image.data;
+    const width = canvas.width;
+    const height = canvas.height;
+    const cornerIndexes = [
+      0,
+      (width - 1) * 4,
+      ((height - 1) * width) * 4,
+      ((height - 1) * width + width - 1) * 4
+    ];
+    const sample = cornerIndexes.reduce((acc, index) => {
+      acc[0] += data[index];
+      acc[1] += data[index + 1];
+      acc[2] += data[index + 2];
+      return acc;
+    }, [0, 0, 0]).map((value) => value / cornerIndexes.length);
+    const visited = new Uint8Array(width * height);
+    const queue = [];
+
+    function matchesBackground(pixelIndex) {
+      const offset = pixelIndex * 4;
+      const dr = data[offset] - sample[0];
+      const dg = data[offset + 1] - sample[1];
+      const db = data[offset + 2] - sample[2];
+      const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+      const max = Math.max(data[offset], data[offset + 1], data[offset + 2]);
+      const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
+      return distance < 58 || (max > 220 && max - min < 42);
+    }
+
+    function enqueue(pixelIndex) {
+      if (pixelIndex < 0 || pixelIndex >= width * height || visited[pixelIndex]) return;
+      visited[pixelIndex] = 1;
+      if (matchesBackground(pixelIndex)) queue.push(pixelIndex);
+    }
+
+    for (let x = 0; x < width; x += 1) {
+      enqueue(x);
+      enqueue((height - 1) * width + x);
+    }
+    for (let y = 0; y < height; y += 1) {
+      enqueue(y * width);
+      enqueue(y * width + width - 1);
+    }
+
+    while (queue.length) {
+      const pixelIndex = queue.shift();
+      const offset = pixelIndex * 4;
+      data[offset] = replacement[0];
+      data[offset + 1] = replacement[1];
+      data[offset + 2] = replacement[2];
+      data[offset + 3] = 255;
+
+      const x = pixelIndex % width;
+      const y = Math.floor(pixelIndex / width);
+      if (x > 0) enqueue(pixelIndex - 1);
+      if (x < width - 1) enqueue(pixelIndex + 1);
+      if (y > 0) enqueue(pixelIndex - width);
+      if (y < height - 1) enqueue(pixelIndex + width);
+    }
+
+    ctx.putImageData(image, 0, 0);
+    canvas.toBlob((blob) => resolve(blob), 'image/png');
   });
 }
 
@@ -545,7 +653,10 @@ export default function Workbench({ tool, locale = 'zh' }) {
       '尺寸设置': 'Resize Settings',
       '合并设置': 'Merge Settings',
       '拆分设置': 'Split Settings',
+      '去密码设置': 'Unlock Settings',
       '压缩强度': 'Compression level',
+      '标准压缩': 'Standard',
+      '强力压缩': 'Strong',
       '目标大小': 'Target size',
       '轻一点': 'Light',
       '平衡': 'Balanced',
@@ -558,6 +669,10 @@ export default function Workbench({ tool, locale = 'zh' }) {
       '完整显示': 'Contain',
       '居中裁切': 'Cover',
       '拉伸填满': 'Stretch',
+      '目标底色': 'Target background',
+      '蓝底': 'Blue',
+      '白底': 'White',
+      '红底': 'Red',
       '导出格式': 'Export format',
       '透明背景处理': 'Transparency',
       '保留透明': 'Keep transparent',
@@ -584,12 +699,16 @@ export default function Workbench({ tool, locale = 'zh' }) {
       '上传顺序': 'Upload order',
       '文件名排序': 'Name order',
       '拆分页码': 'Page range',
+      '页码顺序': 'Page order',
+      '例如 1-3,5,4': 'For example 1-3,5,4',
       '第 1-3 页': 'Pages 1-3',
       '第 4-6 页': 'Pages 4-6',
       '自定义范围': 'Custom range',
       '导出方式': 'Export mode',
       '单个文件': 'Single file',
       '逐页拆开': 'Split per page',
+      '打开密码': 'Open password',
+      '输入 PDF 打开密码': 'Enter PDF open password',
       '导出页码': 'Pages',
       '全部页面': 'All pages',
       '首页': 'First page',
@@ -608,6 +727,12 @@ export default function Workbench({ tool, locale = 'zh' }) {
       '首行处理': 'First row',
       '作为表头': 'As header',
       '作为普通数据': 'As data',
+      '处理方式': 'Operation',
+      '合并文件': 'Merge files',
+      '按工作表拆分': 'Split sheets',
+      '转换方向': 'Direction',
+      'JSON 转 Excel': 'JSON to Excel',
+      'Excel 转 JSON': 'Excel to JSON',
       '空白处理': 'Whitespace',
       '自动去首尾空格': 'Trim',
       '保留原样': 'Keep original',
@@ -823,6 +948,46 @@ export default function Workbench({ tool, locale = 'zh' }) {
 
     const pending = queue.filter((f) => f.status === 'pending');
 
+    if (
+      (tool.id === 'pdf-merge') ||
+      (tool.id === 'excel-merge-split' && (settings.operation || '合并文件') === '合并文件')
+    ) {
+      const endpoint = tool.id === 'pdf-merge' ? '/api/pdf-merge' : '/api/excel-merge';
+      const outputName = tool.id === 'pdf-merge' ? 'merged.pdf' : 'merged.xlsx';
+
+      setFileQueue((cur) => cur.map((f) => (
+        pending.some((item) => item.id === f.id)
+          ? { ...f, status: 'processing', errorMessage: null }
+          : f
+      )));
+
+      try {
+        const blob = await callServerFilesApi(endpoint, pending.map((item) => item.file));
+        setFileQueue((cur) => cur.map((f) => {
+          const pendingIndex = pending.findIndex((item) => item.id === f.id);
+          if (pendingIndex === -1) return f;
+          return {
+            ...f,
+            status: 'done',
+            blob: pendingIndex === 0 ? blob : null,
+            outputName: pendingIndex === 0 ? outputName : null,
+            resultSize: pendingIndex === 0 ? blob.size : null,
+            errorMessage: null
+          };
+        }));
+      } catch (error) {
+        setFileQueue((cur) => cur.map((f) => (
+          pending.some((item) => item.id === f.id)
+            ? { ...f, status: 'error', errorMessage: error instanceof Error ? error.message : '处理失败' }
+            : f
+        )));
+      } finally {
+        setIsProcessing(false);
+        processingRef.current = false;
+      }
+      return;
+    }
+
     for (const item of pending) {
       setFileQueue((cur) => cur.map((f) => f.id === item.id ? { ...f, status: 'processing', errorMessage: null } : f));
 
@@ -839,6 +1004,9 @@ export default function Workbench({ tool, locale = 'zh' }) {
           }
         } else if (tool.id === 'image-resize') {
           blob = await resizeImage(item.file, resizeWidth, resizeHeight, settings.fit || '完整显示');
+        } else if (tool.id === 'image-id-photo-bg') {
+          blob = await replaceIdPhotoBackground(item.file, settings.background || '蓝底');
+          outputName = item.name.replace(/\.[^.]+$/, '_id-photo.png');
         } else if (tool.id === 'image-convert') {
           blob = await convertImage(item.file, settings.target || 'WebP', settings.background || '保留透明');
           const ext = (settings.target || 'WebP').toLowerCase() === 'jpg' ? 'jpg' : (settings.target || 'webp').toLowerCase();
@@ -877,6 +1045,21 @@ export default function Workbench({ tool, locale = 'zh' }) {
         } else if (tool.id === 'csv-to-excel') {
           blob = await callServerApi('/api/csv-to-excel', item.file);
           outputName = item.name.replace(/\.csv$/i, '.xlsx');
+        } else if (tool.id === 'excel-merge-split') {
+          blob = await callServerApi('/api/excel-split', item.file);
+          outputName = item.name.replace(/\.xlsx$/i, '_sheets.zip');
+        } else if (tool.id === 'json-excel') {
+          const selectedMode = settings.mode || '自动判断';
+          if (selectedMode === 'JSON 转 Excel' && !item.name.toLowerCase().endsWith('.json')) {
+            throw new Error('请选择 JSON 文件，或把转换方向改为自动判断。');
+          }
+          if (selectedMode === 'Excel 转 JSON' && !item.name.toLowerCase().endsWith('.xlsx')) {
+            throw new Error('请选择 XLSX 文件，或把转换方向改为自动判断。');
+          }
+          blob = await callServerApi('/api/json-excel', item.file);
+          outputName = item.name.toLowerCase().endsWith('.json')
+            ? item.name.replace(/\.json$/i, '.xlsx')
+            : item.name.replace(/\.xlsx$/i, '.json');
         } else if (tool.id === 'pdf-to-image') {
           blob = await callServerApi('/api/pdf-to-image', item.file, {
             image_type: settings.imageType || 'PNG',
@@ -890,15 +1073,26 @@ export default function Workbench({ tool, locale = 'zh' }) {
             position: settings.position || '居中斜排'
           });
           outputName = item.name.replace(/\.pdf$/i, '_watermarked.pdf');
+        } else if (tool.id === 'pdf-unlock') {
+          blob = await callServerApi('/api/pdf-unlock', item.file, {
+            password: settings.password || ''
+          });
+          outputName = item.name.replace(/\.pdf$/i, '_unlocked.pdf');
+        } else if (tool.id === 'pdf-compress') {
+          blob = await callServerApi('/api/pdf-compress', item.file, {
+            level: settings.level || '标准压缩'
+          });
+          outputName = item.name.replace(/\.pdf$/i, '_compressed.pdf');
+        } else if (tool.id === 'pdf-organize') {
+          blob = await callServerApi('/api/pdf-organize', item.file, {
+            pages: settings.pages || '1-3'
+          });
+          outputName = item.name.replace(/\.pdf$/i, '_organized.pdf');
         } else if (tool.id === 'pdf-split') {
           const rangeMap = { '第 1-3 页': [1, 3], '第 4-6 页': [4, 6], '自定义范围': [1, -1] };
           const [s, e] = rangeMap[settings.range] || [1, -1];
           blob = await callServerApi('/api/pdf-split', item.file, { start: String(s), end: String(e) });
           outputName = item.name.replace(/\.pdf$/i, `_p${s}-${e === -1 ? 'end' : e}.pdf`);
-        } else if (tool.id === 'pdf-merge') {
-          // For merge, we send all files at once (handled separately below)
-          blob = item.file;
-          outputName = 'merged.pdf';
         } else {
           // Generic fallback simulation
           await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
@@ -1009,6 +1203,12 @@ export default function Workbench({ tool, locale = 'zh' }) {
       if (tool.id === 'text-dedup') return 'Dedup Settings';
       if (tool.id === 'timestamp-convert') return 'Convert Settings';
       if (tool.id === 'pdf-watermark') return 'Watermark Settings';
+      if (tool.id === 'pdf-unlock') return 'Unlock Settings';
+      if (tool.id === 'pdf-compress') return 'Compression Settings';
+      if (tool.id === 'pdf-organize') return 'Page Settings';
+      if (tool.id === 'image-id-photo-bg') return 'Background Settings';
+      if (tool.id === 'excel-merge-split') return 'Sheet Settings';
+      if (tool.id === 'json-excel') return 'Convert Settings';
       if (tool.id === 'image-resize') return 'Resize Settings';
       if (tool.id === 'pdf-merge') return 'Merge Settings';
       if (tool.id === 'pdf-split') return 'Split Settings';
@@ -1019,6 +1219,12 @@ export default function Workbench({ tool, locale = 'zh' }) {
     if (tool.id === 'qr-generator') return '生成设置';
     if (tool.id === 'text-dedup') return '去重设置';
     if (tool.id === 'timestamp-convert') return '转换设置';
+    if (tool.id === 'pdf-unlock') return '去密码设置';
+    if (tool.id === 'pdf-compress') return '压缩设置';
+    if (tool.id === 'pdf-organize') return '页面设置';
+    if (tool.id === 'image-id-photo-bg') return '底色设置';
+    if (tool.id === 'excel-merge-split') return '表格设置';
+    if (tool.id === 'json-excel') return '转换设置';
     if (tool.name.includes('转')) return '转换设置';
     if (tool.name.includes('水印')) return '水印设置';
     if (tool.name.includes('尺寸')) return '尺寸设置';
@@ -1392,6 +1598,14 @@ export default function Workbench({ tool, locale = 'zh' }) {
                     getLabel={displayText}
                     value={settings[setting.id]}
                     onChange={(v) => handleSettingChange(setting.id, v)}
+                  />
+                ) : setting.type === 'password' || setting.type === 'text' ? (
+                  <input
+                    className="detail-text-input"
+                    type={setting.type === 'password' ? 'password' : 'text'}
+                    value={settings[setting.id] || ''}
+                    placeholder={displayText(setting.placeholder || '')}
+                    onChange={(e) => handleSettingChange(setting.id, e.target.value)}
                   />
                 ) : (
                   <DetailSegmented

@@ -6,10 +6,16 @@ const iconMap = {
   'image-compress': 'compress',
   'image-resize': 'resize',
   'image-convert': 'convert',
+  'image-id-photo-bg': 'imagepdf',
+  'pdf-compress': 'doc',
   'pdf-to-word': 'doc',
   'word-to-pdf': 'doc',
   'pdf-merge': 'merge',
   'pdf-split': 'split',
+  'pdf-organize': 'split',
+  'pdf-unlock': 'doc',
+  'excel-merge-split': 'merge',
+  'json-excel': 'sheet',
   'qr-generator': 'qr'
 };
 
