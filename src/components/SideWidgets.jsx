@@ -347,6 +347,7 @@ const SIDE_COPY = {
     giftSending: '送出中...',
     giftSent: '奶茶已送出，等对方查收。',
     giftInvalidId: '先输入有效的好友 ID。',
+    giftIdLoading: '你的奶茶 ID 还在生成中，请稍后再试。',
     giftSelfError: '不能给自己送奶茶。',
     giftAccepted: '好友奶茶已送达，开喝吧。',
     giftArrivalKicker: '奶茶空投抵达',
@@ -409,6 +410,7 @@ const SIDE_COPY = {
     giftSending: 'Sending...',
     giftSent: 'Tea sent. Your friend can receive it now.',
     giftInvalidId: 'Enter a valid friend ID first.',
+    giftIdLoading: 'Your tea ID is still loading. Please try again in a moment.',
     giftSelfError: 'You cannot send tea to yourself.',
     giftAccepted: 'Gift received. Enjoy your tea.',
     giftArrivalKicker: 'Tea drop incoming',
@@ -1944,16 +1946,28 @@ export default function SideWidgets({
       return;
     }
 
-    if (recipientId === friendTeaId) {
-      setGiftStatus({ tone: 'error', text: copy.giftSelfError });
-      return;
-    }
-
     setGiftSending(true);
 
     try {
+      let senderId = sanitizeTeaFriendId(friendTeaId);
+
+      if (senderId.length !== 3) {
+        senderId = sanitizeTeaFriendId(await ensureTeaFriendId());
+        setFriendTeaId(senderId);
+      }
+
+      if (senderId.length !== 3) {
+        setGiftStatus({ tone: 'error', text: copy.giftIdLoading });
+        return;
+      }
+
+      if (recipientId === senderId) {
+        setGiftStatus({ tone: 'error', text: copy.giftSelfError });
+        return;
+      }
+
       await sendTeaGift({
-        senderId: friendTeaId,
+        senderId,
         recipientId,
         teaKey: selectedTea.key,
         drinkName: selectedDrink.name,

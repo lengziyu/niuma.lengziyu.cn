@@ -135,7 +135,11 @@ async function parseJsonResponse(response) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const message = typeof data?.detail === 'string' ? data.detail : 'Request failed.';
+    const message = typeof data?.detail === 'string'
+      ? data.detail
+      : Array.isArray(data?.detail) && data.detail.length
+        ? data.detail.map((item) => item?.msg).filter(Boolean).join('；')
+        : 'Request failed.';
     throw new Error(message);
   }
 
