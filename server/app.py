@@ -14,9 +14,10 @@ from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 
@@ -73,6 +74,19 @@ tea_gift_inboxes: dict[str, list[dict[str, str]]] = defaultdict(list)
 tea_gift_receipts: dict[str, list[dict[str, str]]] = defaultdict(list)
 tea_friend_registry: dict[str, dict[str, str | int]] = {}
 tea_gift_lock = Lock()
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    if request.url.path.startswith("/api/tea-gifts/"):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "奶茶请求参数不完整，请刷新页面后重试。"}
+        )
+
+    first_error = exc.errors()[0] if exc.errors() else {}
+    message = first_error.get("msg") or "请求参数无效。"
+    return JSONResponse(status_code=422, content={"detail": f"请求参数无效：{message}"})
 
 
 class TeaGiftRequest(BaseModel):

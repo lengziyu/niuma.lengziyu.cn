@@ -132,14 +132,27 @@ export async function copyText(text) {
 }
 
 async function parseJsonResponse(response) {
-  const data = await response.json().catch(() => ({}));
+  const rawText = await response.text().catch(() => '');
+  let data = {};
+
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = {};
+    }
+  }
 
   if (!response.ok) {
     const message = typeof data?.detail === 'string'
       ? data.detail
       : Array.isArray(data?.detail) && data.detail.length
         ? data.detail.map((item) => item?.msg).filter(Boolean).join('；')
-        : 'Request failed.';
+        : typeof data?.message === 'string'
+          ? data.message
+          : rawText
+            ? `请求失败（HTTP ${response.status}）：${rawText.slice(0, 120)}`
+            : `请求失败（HTTP ${response.status}）`;
     throw new Error(message);
   }
 
